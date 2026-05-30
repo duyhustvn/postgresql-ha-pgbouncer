@@ -1,0 +1,4 @@
+# {{ ansible_managed }}
+# Generated for cluster {{ cluster_name }} - DO NOT EDIT MANUALLY
+Acquire::http::Proxy "{{ http_proxy }}";
+Acquire::https::Proxy "{{ https_proxy if https_proxy else http_proxy }}";

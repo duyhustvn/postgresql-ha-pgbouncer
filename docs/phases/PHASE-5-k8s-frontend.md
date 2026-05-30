@@ -116,5 +116,13 @@ playbooks/k8s_frontend.yml
 
 ## Cảnh báo
 
+- **Proxy & image pull**: Bundle Ansible này không provision K8s worker node. Nếu K8s worker node cần proxy để pull image từ Docker Hub (`haproxy:2.9`, `edoburu/pgbouncer:1.23`), phải cấu hình containerd proxy **trước** khi chạy phase này — nằm ngoài scope bundle. Tham khảo: tạo file `/etc/systemd/system/containerd.service.d/proxy.conf` trên mỗi K8s node:
+  ```ini
+  [Service]
+  Environment="HTTP_PROXY=http://proxy.company.com:3128"
+  Environment="HTTPS_PROXY=http://proxy.company.com:3128"
+  Environment="NO_PROXY=localhost,127.0.0.1,10.244.0.0/16,.svc.cluster.local"
+  ```
+  Sau đó `systemctl daemon-reload && systemctl restart containerd`. Chỉ cần làm một lần khi setup cluster.
 - Nếu NetworkPolicy bật mà CNI không hỗ trợ → traffic vẫn pass nhưng policy không hiệu lực. Document trong role README.
 - `kubernetes.core.k8s` với Secret `stringData` lưu base64 trong etcd K8s (không phải plaintext etcd-side, nhưng ai có quyền GET Secret đều decode được). Không phải secret-at-rest đúng nghĩa — production cần SealedSecrets/Vault. Đề cập trong role README, để hậu kỳ.

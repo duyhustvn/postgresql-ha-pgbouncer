@@ -21,6 +21,23 @@ haproxy_frontend_port: 5000
 haproxy_stats_port: 7000
 pgbouncer_port: 6432
 
+# Proxy — leave empty strings when no proxy is needed.
+# When http_proxy is non-empty, os_prep configures apt automatically.
+# Pass `environment: "{{ proxy_env }}"` on any task that downloads from the internet
+# (get_url, pip, uri) to route through the proxy without leaking it to other processes.
+http_proxy: ""
+https_proxy: ""
+# Bypass proxy for all cluster-internal traffic (etcd peer, Patroni REST, PG replication).
+# Extend this list if your proxy doesn't handle CIDR notation.
+no_proxy: "localhost,127.0.0.1,{{ network_cidr | default('192.168.56.0/24') }}"
+
+# Convenience dict consumed by roles. Do not override individual keys — override the
+# http_proxy / https_proxy / no_proxy variables above instead.
+proxy_env:
+  http_proxy: "{{ http_proxy }}"
+  https_proxy: "{{ https_proxy if https_proxy else http_proxy }}"
+  no_proxy: "{{ no_proxy }}"
+
 # Secrets — mapped from vault.yml (no vault_ prefix here)
 postgres_superuser_password: "{{ vault_postgres_superuser_password }}"
 postgres_replication_password: "{{ vault_postgres_replication_password }}"

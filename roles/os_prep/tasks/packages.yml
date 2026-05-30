@@ -1,4 +1,21 @@
 ---
+- name: Configure apt proxy
+  ansible.builtin.template:
+    src: apt-proxy.conf.j2
+    dest: /etc/apt/apt.conf.d/95ansible-proxy
+    owner: root
+    group: root
+    mode: "0644"
+  when: http_proxy
+  tags: [os_prep, os_prep-proxy]
+
+- name: Remove apt proxy config
+  ansible.builtin.file:
+    path: /etc/apt/apt.conf.d/95ansible-proxy
+    state: absent
+  when: not http_proxy
+  tags: [os_prep, os_prep-proxy]
+
 - name: Update apt cache
   ansible.builtin.apt:
     update_cache: true

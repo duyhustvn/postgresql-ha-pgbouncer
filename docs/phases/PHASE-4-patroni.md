@@ -105,6 +105,20 @@ roles/patroni/
 
 ## Implementation notes
 
+- **Proxy**: Hai loại task cần `environment: "{{ proxy_env }}"`:
+  1. **apt** thêm PGDG repo — apt proxy đã do `os_prep` cấu hình, không cần thêm.
+  2. **pip** install Patroni venv — `ansible.builtin.pip` không thừa kế system proxy, phải pass trực tiếp:
+  ```yaml
+  - ansible.builtin.pip:
+      name:
+        - "patroni[etcd3]==4.1.3"
+        - "psycopg[binary]"
+      virtualenv: /opt/patroni/venv
+      virtualenv_command: python3 -m venv
+    environment: "{{ proxy_env }}"
+    tags: [patroni, patroni-install]
+  ```
+
 - KHÔNG enable systemd của `postgresql.service` từ PGDG package. Mask nó:
   ```yaml
   - ansible.builtin.systemd:

@@ -6,6 +6,7 @@ Implement `roles/os_prep` để chuẩn bị 3 PG node sẵn sàng cho etcd + Pa
 
 ## In scope
 
+- Cấu hình apt proxy qua `/etc/apt/apt.conf.d/95ansible-proxy` khi `http_proxy` được set; xóa file đó khi `http_proxy` rỗng.
 - Cài base packages: `curl`, `gnupg`, `python3`, `python3-psycopg2`, `python3-pip`, `acl`, `chrony`.
 - Tạo user `postgres` và `etcd` (system, no login).
 - Apply sysctl:
@@ -32,13 +33,15 @@ Implement `roles/os_prep` để chuẩn bị 3 PG node sẵn sàng cho etcd + Pa
 roles/os_prep/
 ├── tasks/
 │   ├── main.yml             # import_tasks điều phối
-│   ├── packages.yml
+│   ├── packages.yml         # apt proxy setup (trước update cache) + base packages
 │   ├── users.yml
 │   ├── sysctl.yml
 │   ├── hugepages.yml
 │   ├── watchdog.yml
 │   ├── firewall.yml
 │   └── time_sync.yml
+├── templates/
+│   └── apt-proxy.conf.j2   # Acquire::http/https::Proxy directives
 ├── defaults/main.yml        # vm_nr_hugepages, network_cidr, etcd_data_dir, postgresql_data_dir, …
 ├── handlers/main.yml        # reload sysctl, restart chrony
 ├── meta/main.yml
@@ -58,6 +61,26 @@ playbooks/os_prep.yml         # gọi role os_prep cho group db_nodes
 
 ## Implementation notes
 
+- Apt proxy (đầu `packages.yml`, trước `Update apt cache`):
+  ```yaml
+  - name: Configure apt proxy
+    ansible.builtin.template:
+      src: apt-proxy.conf.j2
+      dest: /etc/apt/apt.conf.d/95ansible-proxy
+      owner: root
+      group: root
+      mode: "0644"
+    when: http_proxy
+    tags: [os_prep, os_prep-proxy]
+
+  - name: Remove apt proxy config
+    ansible.builtin.file:
+      path: /etc/apt/apt.conf.d/95ansible-proxy
+      state: absent
+    when: not http_proxy
+    tags: [os_prep, os_prep-proxy]
+  ```
+  Template `apt-proxy.conf.j2` dùng biến `http_proxy`, `https_proxy` từ `group_vars/all/main.yml`.
 - Dùng `ansible.posix.sysctl` với `reload: yes` cho từng giá trị, hoặc `sysctl_set: yes` để persist.
 - Huge pages: tính số trang cần qua biến `vm_nr_hugepages`. Cho `shared_buffers = 16GB` và page size 2MB → cần ~8400 trang (16384/2 + overhead). Documentation note: sau khi PG cài, lấy số chính xác từ `postgres -C shared_memory_size_in_huge_pages`.
 - Watchdog: 

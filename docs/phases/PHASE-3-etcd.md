@@ -53,6 +53,18 @@ playbooks/etcd.yml            # gọi role etcd cho group etcd
 
 ## Implementation notes
 
+- **Proxy**: Task download etcd binary từ GitHub **phải** có `environment: "{{ proxy_env }}"`. Task nội bộ cluster (etcdctl, service start) không cần.
+  ```yaml
+  - name: Download etcd archive
+    ansible.builtin.get_url:
+      url: "https://github.com/etcd-io/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+      dest: "/tmp/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+      checksum: "sha256:..."
+    environment: "{{ proxy_env }}"
+    tags: [etcd, etcd-install]
+  ```
+  Biến `proxy_env` định nghĩa trong `group_vars/all/main.yml` — rỗng khi không dùng proxy, hoạt động trong mọi môi trường.
+
 - Bootstrap pattern (quan trọng để đúng):
   ```yaml
   - hosts: etcd

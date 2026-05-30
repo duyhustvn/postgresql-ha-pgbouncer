@@ -72,6 +72,33 @@ Dify (đã chạy trong K8s) sẽ connect vào K8s Service của PgBouncer.
 - **Hỏi khi không chắc.** Khi spec mơ hồ, dừng lại hỏi thay vì đoán — đặc biệt với secret, IP, version pin.
 - **Đầu ra phải lint pass.** Kết thúc phase phải chạy được `ansible-lint` không warning.
 
+## Proxy support
+
+Khi deploy trong môi trường corporate có HTTP proxy, dùng **per-task proxy** (không ghi hệ thống toàn cục) để tránh ảnh hưởng traffic nội bộ cluster (etcd peer, Patroni REST, PG replication).
+
+**Biến trung tâm** (khai báo trong `group_vars/all/main.yml`, rỗng khi không dùng proxy):
+
+```yaml
+http_proxy: ""
+https_proxy: ""
+no_proxy: "localhost,127.0.0.1,{{ network_cidr }}"
+proxy_env:           # dict dùng chung — không ghi đè trực tiếp
+  http_proxy: "{{ http_proxy }}"
+  https_proxy: "{{ https_proxy if https_proxy else http_proxy }}"
+  no_proxy: "{{ no_proxy }}"
+```
+
+**Áp dụng theo tầng:**
+
+| Tầng | Cơ chế | Task áp dụng |
+|---|---|---|
+| `apt` | `/etc/apt/apt.conf.d/95ansible-proxy` | Tự động qua `os_prep` khi `http_proxy` non-empty |
+| `get_url` (etcd binary) | `environment: "{{ proxy_env }}"` | `etcd/tasks/install.yml` |
+| `pip` (Patroni venv) | `environment: "{{ proxy_env }}"` | `patroni/tasks/install.yml` |
+| K8s image pull | systemd drop-in containerd | Ngoài scope Ansible bundle — cấu hình khi provision K8s |
+
+**Quy tắc:** Mọi task dùng `get_url`, `pip`, hoặc `uri` mà fetch từ internet **phải** có `environment: "{{ proxy_env }}"`. Task nội bộ cluster (etcdctl, patronictl, psql) **không** thêm `environment` này.
+
 ## Tham chiếu chi tiết
 
 - Kiến trúc: `ARCHITECTURE.md`

@@ -146,6 +146,45 @@ Mỗi VM có 2 phân vùng: OS (`/`) và data (`/u01`). **Mọi data dịch vụ
 Role `os_prep` phải verify `/u01` đã mount trước khi tạo thư mục con (dùng `ansible.builtin.stat` + `ansible.builtin.fail`).
 Không tạo thư mục data trực tiếp dưới `/var/lib` hay `/` — vi phạm convention này là bug.
 
+## Proxy support (corporate environments)
+
+Dự án hỗ trợ deploy qua HTTP proxy bằng cách **không** ghi proxy vào system-wide mà dùng **per-task proxy** để kiểm soát chính xác.
+
+### Biến proxy (group_vars/all/main.yml)
+
+```yaml
+http_proxy: ""          # rỗng = không dùng proxy
+https_proxy: ""
+no_proxy: "localhost,127.0.0.1,{{ network_cidr }}"
+proxy_env:              # dict dùng chung — không override trực tiếp
+  http_proxy: "{{ http_proxy }}"
+  https_proxy: "{{ https_proxy if https_proxy else http_proxy }}"
+  no_proxy: "{{ no_proxy }}"
+```
+
+### Pattern bắt buộc
+
+**Task fetch từ internet** (get_url, pip, uri → GitHub, PyPI, apt repo…) phải có:
+```yaml
+environment: "{{ proxy_env }}"
+```
+
+**Task nội bộ cluster** (etcdctl, patronictl, psql, curl Patroni REST…) **không** thêm `environment` — tránh proxy internal traffic qua proxy server.
+
+### Cấu hình apt proxy
+
+`os_prep` tự động quản lý `/etc/apt/apt.conf.d/95ansible-proxy`:
+- Khi `http_proxy` non-empty: ghi file (template `apt-proxy.conf.j2`).
+- Khi `http_proxy` rỗng: xóa file (idempotent).
+
+### Tham chiếu theo phase
+
+| Phase | Task cần `environment: "{{ proxy_env }}"` |
+|---|---|
+| Phase 3 (etcd) | `get_url` download binary từ GitHub |
+| Phase 4 (patroni) | `pip` install vào venv |
+| Phase 5 (K8s) | K8s worker pull image — ngoài scope bundle, cần containerd proxy |
+
 ## Không làm những điều sau
 
 - Không hardcode IP/hostname trong template — luôn dùng `hostvars[item].ansible_host`.
