@@ -1,5 +1,14 @@
 ---
-- name: Restart etcd
+# Both handlers share the same listen label so they fire in declaration order:
+# daemon-reload first, then service restart. The playbook must use serial: 1
+# when this handler fires on a live cluster to avoid simultaneous restarts
+# dropping quorum.
+- name: Reload systemd daemon for etcd
+  ansible.builtin.systemd:
+    daemon_reload: true
+  listen: restart etcd
+
+- name: Restart etcd service
   ansible.builtin.service:
     name: etcd
     state: restarted

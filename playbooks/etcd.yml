@@ -1,8 +1,36 @@
 ---
+# Bootstrap: all three nodes are configured and started in PARALLEL so they
+# form the initial cluster simultaneously. Tasks are idempotent — re-running
+# this playbook on an already-running cluster is safe.
+#
+# Day-2 config change: add "serial: 1" to the first play to restart one node
+# at a time, preventing simultaneous restarts from dropping quorum.
 - name: Deploy etcd cluster
   hosts: etcd
   become: true
   gather_facts: true
-  roles:
-    - role: etcd
-      tags: [etcd]
+  tasks:
+    - name: Install etcd binaries
+      ansible.builtin.import_role:
+        name: etcd
+        tasks_from: install
+
+    - name: Configure etcd
+      ansible.builtin.import_role:
+        name: etcd
+        tasks_from: configure
+
+    - name: Start etcd service
+      ansible.builtin.import_role:
+        name: etcd
+        tasks_from: start
+
+- name: Verify etcd cluster health
+  hosts: etcd
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Verify etcd cluster health
+      ansible.builtin.import_role:
+        name: etcd
+        tasks_from: verify

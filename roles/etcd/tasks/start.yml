@@ -1,0 +1,23 @@
+---
+- name: Check etcd bootstrap state
+  ansible.builtin.stat:
+    path: "{{ etcd_data_dir }}/member"
+  register: etcd_member_dir
+  tags: [etcd, etcd-start]
+
+- name: Set etcd bootstrapped fact
+  ansible.builtin.set_fact:
+    etcd_bootstrapped: "{{ etcd_member_dir.stat.exists }}"
+  tags: [etcd, etcd-start]
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+  tags: [etcd, etcd-start]
+
+- name: Enable and start etcd service
+  ansible.builtin.service:
+    name: etcd
+    state: started
+    enabled: true
+  tags: [etcd, etcd-start]

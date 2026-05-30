@@ -1,5 +1,9 @@
 ---
-- name: TODO - etcd tasks
-  ansible.builtin.debug:
-    msg: "TODO: implement etcd tasks (install, configure, bootstrap cluster)"
-  tags: [etcd, etcd-install, etcd-config]
+- name: Install etcd binaries
+  ansible.builtin.import_tasks: install.yml
+
+- name: Configure etcd
+  ansible.builtin.import_tasks: configure.yml
+
+- name: Start etcd service
+  ansible.builtin.import_tasks: start.yml

@@ -1,0 +1,45 @@
+---
+- name: Wait for etcd cluster to become healthy
+  ansible.builtin.command:
+    cmd: >-
+      etcdctl
+      --endpoints={{ groups['etcd']
+        | map('extract', hostvars, 'ansible_host')
+        | map('regex_replace', '^', 'http://')
+        | map('regex_replace', '$', ':2379')
+        | join(',') }}
+      endpoint health --cluster
+  environment:
+    ETCDCTL_API: "3"
+  register: etcd_health
+  changed_when: false
+  retries: "{{ etcd_health_check_retries }}"
+  delay: "{{ etcd_health_check_delay }}"
+  until: etcd_health.rc == 0
+  run_once: true
+  delegate_to: "{{ groups['etcd'] | first }}"
+  tags: [etcd, etcd-verify]
+
+- name: Show etcd cluster status
+  ansible.builtin.command:
+    cmd: >-
+      etcdctl
+      --endpoints={{ groups['etcd']
+        | map('extract', hostvars, 'ansible_host')
+        | map('regex_replace', '^', 'http://')
+        | map('regex_replace', '$', ':2379')
+        | join(',') }}
+      endpoint status --write-out=table
+  environment:
+    ETCDCTL_API: "3"
+  register: etcd_status
+  changed_when: false
+  run_once: true
+  delegate_to: "{{ groups['etcd'] | first }}"
+  tags: [etcd, etcd-verify]
+
+- name: Print etcd status table
+  ansible.builtin.debug:
+    msg: "{{ etcd_status.stdout_lines }}"
+  run_once: true
+  tags: [etcd, etcd-verify]

@@ -4,5 +4,7 @@ etcd_group: etcd
 etcd_install_dir: /usr/local/bin
 etcd_data_dir: /u01/etcd
 etcd_config_dir: /etc/etcd
-etcd_client_port: "{{ etcd_client_port | default(2379) }}"
-etcd_peer_port: "{{ etcd_peer_port | default(2380) }}"
+# Set to "sha256:<hash>" to verify the downloaded archive. Leave empty to skip.
+etcd_archive_checksum: ""
+etcd_health_check_retries: 12
+etcd_health_check_delay: 5

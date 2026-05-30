@@ -1,0 +1,18 @@
+# {{ ansible_managed }}
+[Unit]
+Description=etcd
+Documentation=https://github.com/etcd-io/etcd
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User={{ etcd_user }}
+Group={{ etcd_group }}
+Type=notify
+ExecStart={{ etcd_install_dir }}/etcd --config-file {{ etcd_config_dir }}/etcd.conf.yml
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

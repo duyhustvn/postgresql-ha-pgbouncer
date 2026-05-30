@@ -1,0 +1,47 @@
+---
+- name: Create etcd system group
+  ansible.builtin.group:
+    name: "{{ etcd_group }}"
+    system: true
+    state: present
+  tags: [etcd, etcd-install]
+
+- name: Create etcd system user
+  ansible.builtin.user:
+    name: "{{ etcd_user }}"
+    group: "{{ etcd_group }}"
+    system: true
+    shell: /sbin/nologin
+    create_home: false
+    state: present
+  tags: [etcd, etcd-install]
+
+- name: Download etcd archive
+  ansible.builtin.get_url:
+    url: "https://github.com/etcd-io/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+    dest: "/tmp/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+    checksum: "{{ etcd_archive_checksum | default(omit, true) }}"
+    mode: "0644"
+  environment: "{{ proxy_env }}"
+  tags: [etcd, etcd-install]
+
+- name: Unarchive etcd
+  ansible.builtin.unarchive:
+    src: "/tmp/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+    dest: /tmp
+    remote_src: true
+    creates: "/tmp/etcd-{{ etcd_version }}-linux-amd64/etcd"
+  tags: [etcd, etcd-install]
+
+- name: Install etcd binaries
+  ansible.builtin.copy:
+    src: "/tmp/etcd-{{ etcd_version }}-linux-amd64/{{ item }}"
+    dest: "{{ etcd_install_dir }}/{{ item }}"
+    owner: root
+    group: root
+    mode: "0755"
+    remote_src: true
+  loop:
+    - etcd
+    - etcdctl
+  tags: [etcd, etcd-install]
