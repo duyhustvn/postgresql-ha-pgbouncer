@@ -1,0 +1,20 @@
+---
+- name: Install Python3 venv and libpq prerequisites
+  ansible.builtin.apt:
+    name:
+      - python3-venv
+      - python3-pip
+      - python3-dev
+      - libpq-dev
+    state: present
+  tags: [patroni, patroni-install]
+
+- name: Install Patroni and psycopg into venv
+  ansible.builtin.pip:
+    name:
+      - "patroni[etcd3]=={{ patroni_version }}"
+      - "psycopg[binary]"
+    virtualenv: "{{ patroni_venv }}"
+    virtualenv_command: python3 -m venv
+  environment: "{{ proxy_env }}"
+  tags: [patroni, patroni-install]

@@ -1,0 +1,20 @@
+---
+- name: Install PostgreSQL packages
+  ansible.builtin.apt:
+    name:
+      - "postgresql-{{ postgresql_version }}"
+      - "postgresql-client-{{ postgresql_version }}"
+      - "postgresql-contrib-{{ postgresql_version }}"
+    state: present
+    update_cache: false
+  tags: [postgresql, postgresql-install]
+
+# Patroni manages the PostgreSQL process. The PGDG systemd unit must be masked
+# so it never auto-starts or conflicts with Patroni's process management.
+- name: Disable and mask postgresql systemd service
+  ansible.builtin.systemd:
+    name: postgresql
+    enabled: false
+    state: stopped
+    masked: true
+  tags: [postgresql, postgresql-install]

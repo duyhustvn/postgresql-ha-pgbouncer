@@ -1,0 +1,79 @@
+# {{ ansible_managed }}
+# Generated for cluster {{ cluster_name }} - DO NOT EDIT MANUALLY
+# Changes to DCS parameters must be made via: patronictl edit-config
+
+scope: {{ cluster_name }}
+namespace: /service/
+name: {{ patroni_name }}
+
+restapi:
+  listen: 0.0.0.0:{{ patroni_rest_port }}
+  connect_address: {{ ansible_host }}:{{ patroni_rest_port }}
+
+etcd3:
+  hosts: "{% for h in groups['etcd'] %}{{ hostvars[h].ansible_host }}:{{ etcd_client_port }}{% if not loop.last %},{% endif %}{% endfor %}"
+
+bootstrap:
+  dcs:
+    ttl: {{ patroni_ttl }}
+    loop_wait: {{ patroni_loop_wait }}
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+    synchronous_mode: false
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+      parameters:
+        {# TODO 4b: fill full PostgreSQL performance parameters from patroni-spec.md #}
+        max_connections: 200
+        wal_level: replica
+        wal_log_hints: 'on'
+        hot_standby: 'on'
+        max_wal_senders: 10
+        max_replication_slots: 10
+
+  initdb:
+    - encoding: UTF8
+    - data-checksums
+
+  pg_hba:
+    - host replication replicator {{ network_cidr }} scram-sha-256
+    - host all             all        {{ network_cidr }} scram-sha-256
+    - host all             dify       {{ k8s_pod_cidr }} scram-sha-256
+
+  users:
+    admin:
+      password: {{ postgres_superuser_password }}
+      options:
+        - createrole
+        - createdb
+
+postgresql:
+  listen: 0.0.0.0:{{ postgresql_port }}
+  connect_address: {{ ansible_host }}:{{ postgresql_port }}
+  data_dir: {{ postgresql_pgdata }}
+  bin_dir: {{ postgresql_bin_dir }}
+  pgpass: /tmp/pgpass0
+  authentication:
+    replication:
+      username: replicator
+      password: {{ postgres_replication_password }}
+    superuser:
+      username: postgres
+      password: {{ postgres_superuser_password }}
+    rewind:
+      username: rewind_user
+      password: {{ postgres_rewind_password }}
+  parameters:
+    unix_socket_directories: '/var/run/postgresql'
+
+watchdog:
+  mode: {{ patroni_watchdog_mode }}
+  device: /dev/watchdog
+  safety_margin: 5
+
+tags:
+  nofailover: false
+  noloadbalance: false
+  clonefrom: false
+  nosync: false

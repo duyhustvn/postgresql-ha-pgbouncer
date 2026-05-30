@@ -1,0 +1,38 @@
+---
+- name: Create Patroni config directory
+  ansible.builtin.file:
+    path: "{{ patroni_config_dir }}"
+    state: directory
+    owner: "{{ postgresql_user }}"
+    group: "{{ postgresql_group }}"
+    mode: "0750"
+  tags: [patroni, patroni-config]
+
+- name: Create Patroni log directory
+  ansible.builtin.file:
+    path: "{{ patroni_log_dir }}"
+    state: directory
+    owner: "{{ postgresql_user }}"
+    group: "{{ postgresql_group }}"
+    mode: "0750"
+  tags: [patroni, patroni-config]
+
+- name: Template patroni.yml config
+  ansible.builtin.template:
+    src: patroni.yml.j2
+    dest: "{{ patroni_config_dir }}/patroni.yml"
+    owner: "{{ postgresql_user }}"
+    group: "{{ postgresql_group }}"
+    mode: "0640"
+  notify: restart patroni
+  tags: [patroni, patroni-config]
+
+- name: Template patroni systemd unit
+  ansible.builtin.template:
+    src: patroni.service.j2
+    dest: /etc/systemd/system/patroni.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart patroni
+  tags: [patroni, patroni-config]

@@ -1,5 +1,7 @@
 ---
+patroni_venv: /opt/patroni/venv
 patroni_config_dir: /etc/patroni
 patroni_log_dir: /var/log/patroni
-patroni_rest_port: 8008
-patroni_watchdog_mode: "off"
+# Set to 'off' in test environments without a softdog/hardware watchdog device.
+# group_vars/db_nodes/main.yml overrides this for the target environment.
+patroni_watchdog_mode: required

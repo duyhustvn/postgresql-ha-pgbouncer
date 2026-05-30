@@ -1,5 +1,9 @@
 ---
-- name: TODO - PostgreSQL tasks
-  ansible.builtin.debug:
-    msg: "TODO: implement postgresql tasks (install pg16, create data dir under /u01)"
-  tags: [postgresql, postgresql-install, postgresql-config]
+- name: Add PGDG apt repository
+  ansible.builtin.import_tasks: repo.yml
+
+- name: Install PostgreSQL packages
+  ansible.builtin.import_tasks: install.yml
+
+- name: Prepare PostgreSQL data directory
+  ansible.builtin.import_tasks: prepare.yml

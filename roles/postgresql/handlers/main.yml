@@ -1,2 +1,3 @@
 ---
-[]
+# PostgreSQL service is managed exclusively by Patroni — no direct service
+# handlers here. Reload/restart is handled by roles/patroni/handlers/main.yml.

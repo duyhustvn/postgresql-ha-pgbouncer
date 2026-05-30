@@ -8,6 +8,8 @@ pgbouncer_image: "edoburu/pgbouncer:1.23"
 
 k8s_namespace: db
 k8s_pod_cidr: "10.244.0.0/16"
+# VM subnet — used in pg_hba rules (patroni role) and proxy bypass list
+network_cidr: "192.168.56.0/24"
 
 patroni_ttl: 30
 patroni_loop_wait: 10
@@ -29,7 +31,7 @@ http_proxy: ""
 https_proxy: ""
 # Bypass proxy for all cluster-internal traffic (etcd peer, Patroni REST, PG replication).
 # Extend this list if your proxy doesn't handle CIDR notation.
-no_proxy: "localhost,127.0.0.1,{{ network_cidr | default('192.168.56.0/24') }}"
+no_proxy: "localhost,127.0.0.1,{{ network_cidr }}"
 
 # Convenience dict consumed by roles. Do not override individual keys — override the
 # http_proxy / https_proxy / no_proxy variables above instead.

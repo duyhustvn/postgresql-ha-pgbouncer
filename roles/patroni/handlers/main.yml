@@ -1,5 +1,14 @@
 ---
-- name: Restart patroni
+# Both handlers share the same listen label so they fire in declaration order:
+# daemon-reload first, then service restart. The playbook must use serial: 1
+# when this handler fires on a live cluster to avoid simultaneous restarts
+# causing a leadership gap.
+- name: Reload systemd daemon for patroni
+  ansible.builtin.systemd:
+    daemon_reload: true
+  listen: restart patroni
+
+- name: Restart patroni service
   ansible.builtin.service:
     name: patroni
     state: restarted

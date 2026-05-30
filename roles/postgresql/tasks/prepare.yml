@@ -1,0 +1,10 @@
+---
+# Patroni will initdb this directory on bootstrap — do NOT run initdb here.
+- name: Create PostgreSQL PGDATA directory
+  ansible.builtin.file:
+    path: "{{ postgresql_pgdata }}"
+    state: directory
+    owner: "{{ postgresql_user }}"
+    group: "{{ postgresql_group }}"
+    mode: "0700"
+  tags: [postgresql, postgresql-config]

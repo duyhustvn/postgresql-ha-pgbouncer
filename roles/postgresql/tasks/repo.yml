@@ -1,0 +1,29 @@
+---
+- name: Install apt transport prerequisites
+  ansible.builtin.apt:
+    name:
+      - curl
+      - gnupg2
+      - apt-transport-https
+      - ca-certificates
+    state: present
+  tags: [postgresql, postgresql-install]
+
+- name: Download PGDG signing key
+  ansible.builtin.get_url:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    dest: /usr/share/keyrings/postgresql-archive-keyring.asc
+    mode: "0644"
+  environment: "{{ proxy_env }}"
+  tags: [postgresql, postgresql-install]
+
+- name: Add PGDG apt repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch=amd64 signed-by=/usr/share/keyrings/postgresql-archive-keyring.asc]
+      https://apt.postgresql.org/pub/repos/apt
+      {{ ansible_distribution_release }}-pgdg main
+    state: present
+    filename: pgdg
+    update_cache: true
+  tags: [postgresql, postgresql-install]

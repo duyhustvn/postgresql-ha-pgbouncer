@@ -1,5 +1,9 @@
 ---
-- name: TODO - Patroni tasks
-  ansible.builtin.debug:
-    msg: "TODO: implement patroni tasks (install, configure, bootstrap cluster)"
-  tags: [patroni, patroni-install, patroni-config]
+# bootstrap_leader and join_replica are NOT imported here — they are
+# orchestration-specific entry points called via import_role tasks_from:
+# in playbooks/database.yml with per-play host targeting.
+- name: Install Patroni
+  ansible.builtin.import_tasks: install.yml
+
+- name: Configure Patroni
+  ansible.builtin.import_tasks: configure.yml

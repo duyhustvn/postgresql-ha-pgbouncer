@@ -1,64 +1,82 @@
 # Role: patroni
 
-Deploy Patroni for PostgreSQL HA management with etcd as DCS.
-
-## Purpose
-
-Installs Patroni (via pip into a venv), writes `patroni.yml`, registers the
-systemd service, and on the designated bootstrap node triggers `patronictl`
-cluster init. All PostgreSQL parameter changes go through
-`bootstrap.dcs.postgresql.parameters` — never through direct file edits.
+Installs Patroni into a Python venv, templates `patroni.yml` and the systemd unit,
+and provides entry-point task files for leader bootstrap and replica join.
 
 ## Variables
 
-### defaults/main.yml (overridable)
+### Role defaults (`defaults/main.yml`)
 
 | Variable | Default | Description |
 |---|---|---|
+| `patroni_venv` | `/opt/patroni/venv` | Python virtual environment path |
 | `patroni_config_dir` | `/etc/patroni` | Config directory |
 | `patroni_log_dir` | `/var/log/patroni` | Log directory |
-| `patroni_rest_port` | `8008` | Patroni REST API port (used by HAProxy health check) |
-| `patroni_watchdog_mode` | `off` | `required` in production, `off` for testing |
+| `patroni_watchdog_mode` | `required` | `required` in production, `off` for testing (see note) |
+| `network_cidr` | `192.168.56.0/24` | VM subnet — used in pg_hba; override in group_vars |
 
-### group_vars/db_nodes/main.yml
-
-| Variable | Description |
-|---|---|
-| `pg_max_connections` | PostgreSQL `max_connections` (managed by Patroni) |
-| `pg_work_mem` | Per-sort work memory |
-| `pg_shared_buffers` | Shared buffers |
-
-### Required from group_vars/all
+### Required from `group_vars/all/main.yml`
 
 | Variable | Description |
 |---|---|
 | `patroni_version` | Patroni pip version (e.g. `4.1.3`) |
-| `cluster_name` | Patroni cluster name |
+| `cluster_name` | Patroni cluster scope |
 | `patroni_ttl` | Leader TTL in seconds |
 | `patroni_loop_wait` | Loop wait in seconds |
-| `postgres_superuser_password` | PostgreSQL superuser password |
-| `postgres_replication_password` | Replication user password |
-| `postgres_rewind_password` | pg_rewind user password |
+| `patroni_rest_port` | REST API port (HAProxy health-check target) |
+| `etcd_client_port` | etcd client port used in `etcd3.hosts` |
+| `k8s_pod_cidr` | Kubernetes pod CIDR for pg_hba dify rule |
+| `proxy_env` | Proxy dict — used by `pip install` |
+| `postgres_superuser_password` | Mapped from vault |
+| `postgres_replication_password` | Mapped from vault |
+| `postgres_rewind_password` | Mapped from vault |
 
-## Dependencies
+### From `postgresql` role defaults (loaded via meta dependency)
 
-- `postgresql`
-- `etcd`
+| Variable | Description |
+|---|---|
+| `postgresql_user / group` | Unix user/group for ownership |
+| `postgresql_pgdata` | Full PGDATA path passed to `patroni.yml` |
+| `postgresql_bin_dir` | PostgreSQL binaries path |
+| `postgresql_port` | PostgreSQL listen port |
 
-## Example
+## Task files (entry points)
+
+| File | Called via | Purpose |
+|---|---|---|
+| `install.yml` | `main.yml` or `tasks_from: install` | venv creation + pip install |
+| `configure.yml` | `main.yml` or `tasks_from: configure` | Template patroni.yml + systemd unit |
+| `bootstrap_leader.yml` | `tasks_from: bootstrap_leader` | Start Patroni on node[0], wait `/primary` |
+| `join_replica.yml` | `tasks_from: join_replica` | Start Patroni on replica, wait `/replica` |
+
+## Watchdog note
+
+`patroni_watchdog_mode: required` is the safe production default — Patroni will refuse to
+start if `/dev/watchdog` is not available. For test environments without `softdog`,
+override in `group_vars/db_nodes/main.yml`:
 
 ```yaml
-- name: Deploy Patroni
-  hosts: db_nodes
-  become: true
-  roles:
-    - role: patroni
+patroni_watchdog_mode: "off"
 ```
+
+The `os_prep` role loads `softdog` via `/etc/modules-load.d/softdog.conf` on production nodes.
+
+## Day-2 restart safety
+
+The `restart patroni` handler (daemon-reload → service restart) fires for config changes.
+**Never restart all three nodes simultaneously** — it causes a temporary loss of primary.
+Always set `serial: 1` on the calling play for rolling restarts.
 
 ## Tags
 
 | Tag | Scope |
 |---|---|
 | `patroni` | All tasks |
-| `patroni-install` | pip venv + binary |
-| `patroni-config` | patroni.yml template + systemd unit |
+| `patroni-install` | venv + pip |
+| `patroni-config` | patroni.yml + systemd unit |
+| `patroni-start` | bootstrap_leader + join_replica |
+
+## Dependencies
+
+- `postgresql` (declared in `meta/main.yml`)
+- `etcd` (declared in `meta/main.yml`)

@@ -1,0 +1,24 @@
+---
+- name: Reload systemd daemon before starting patroni replica
+  ansible.builtin.systemd:
+    daemon_reload: true
+  tags: [patroni, patroni-start]
+
+- name: Enable and start patroni on replica node
+  ansible.builtin.service:
+    name: patroni
+    state: started
+    enabled: true
+  tags: [patroni, patroni-start]
+
+# Patroni will run pg_basebackup from primary before this check passes.
+# Timeout is generous (30 × 5s = 150s) to allow basebackup to complete.
+- name: Wait for Patroni replica streaming endpoint to respond
+  ansible.builtin.uri:
+    url: "http://{{ ansible_host }}:{{ patroni_rest_port }}/replica"
+    status_code: 200
+  register: patroni_replica_check
+  retries: 30
+  delay: 5
+  until: patroni_replica_check.status == 200
+  tags: [patroni, patroni-start]

@@ -1,6 +1,8 @@
 ---
 postgresql_user: postgres
 postgresql_group: postgres
+# postgresql_data_dir is the base; full PGDATA = base/version/main
+# group_vars/db_nodes/main.yml overrides base to /u01/postgresql
 postgresql_data_dir: /u01/postgresql
-postgresql_log_dir: /u01/postgresql/log
-postgresql_port: 5432
+postgresql_pgdata: "{{ postgresql_data_dir }}/{{ postgresql_version }}/main"
+postgresql_bin_dir: "/usr/lib/postgresql/{{ postgresql_version }}/bin"
