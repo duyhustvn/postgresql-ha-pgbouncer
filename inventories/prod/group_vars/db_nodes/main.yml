@@ -1,0 +1,12 @@
+---
+# Data directories (all under /u01 — separate partition)
+postgresql_data_dir: /u01/postgresql
+patroni_config_dir: /etc/patroni
+
+# PostgreSQL tuning (Patroni owns postgresql.conf — set via bootstrap.dcs)
+pg_max_connections: 200
+pg_work_mem: "32MB"
+pg_shared_buffers: "256MB"
+
+# Patroni watchdog: set to 'required' in production, 'off' for testing
+patroni_watchdog_mode: "off"

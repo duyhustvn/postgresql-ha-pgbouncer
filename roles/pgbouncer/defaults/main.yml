@@ -1,0 +1,9 @@
+---
+pgbouncer_replicas: 3
+pgbouncer_port: 6432
+pgbouncer_image: "edoburu/pgbouncer:1.23"
+pgbouncer_pool_mode: transaction
+pgbouncer_max_client_conn: 2000
+pgbouncer_default_pool_size: 50
+pgbouncer_reserve_pool_size: 10
+pgbouncer_server_lifetime: 600

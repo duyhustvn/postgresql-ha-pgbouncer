@@ -1,0 +1,5 @@
+---
+- name: TODO - PgBouncer tasks
+  ansible.builtin.debug:
+    msg: "TODO: implement pgbouncer tasks (K8s Deployment + Service + Secret)"
+  tags: [pgbouncer, pgbouncer-install, pgbouncer-config]

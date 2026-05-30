@@ -1,0 +1,7 @@
+---
+os_prep_data_mount: /u01
+os_prep_required_packages:
+  - python3-psycopg2
+  - acl
+  - curl
+  - ca-certificates

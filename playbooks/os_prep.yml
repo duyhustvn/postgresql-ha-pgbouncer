@@ -1,0 +1,8 @@
+---
+- name: OS baseline preparation
+  hosts: db_nodes
+  become: true
+  gather_facts: true
+  roles:
+    - role: os_prep
+      tags: [os_prep]

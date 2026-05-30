@@ -1,0 +1,5 @@
+---
+- name: TODO - HAProxy tasks
+  ansible.builtin.debug:
+    msg: "TODO: implement haproxy tasks (K8s Deployment + Service)"
+  tags: [haproxy, haproxy-install, haproxy-config]

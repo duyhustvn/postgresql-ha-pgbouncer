@@ -1,0 +1,5 @@
+---
+- name: TODO - OS preparation tasks
+  ansible.builtin.debug:
+    msg: "TODO: implement os_prep tasks (packages, sysctl, users, /u01 mount)"
+  tags: [os_prep, os_prep-install, os_prep-config]

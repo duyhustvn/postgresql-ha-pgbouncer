@@ -1,0 +1,6 @@
+---
+postgresql_user: postgres
+postgresql_group: postgres
+postgresql_data_dir: /u01/postgresql
+postgresql_log_dir: /u01/postgresql/log
+postgresql_port: 5432

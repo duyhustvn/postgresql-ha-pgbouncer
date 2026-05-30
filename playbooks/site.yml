@@ -1,0 +1,12 @@
+---
+- name: Full cluster deployment
+  ansible.builtin.import_playbook: os_prep.yml
+
+- name: Deploy etcd cluster
+  ansible.builtin.import_playbook: etcd.yml
+
+- name: Deploy PostgreSQL + Patroni
+  ansible.builtin.import_playbook: database.yml
+
+- name: Deploy K8s frontend (HAProxy + PgBouncer)
+  ansible.builtin.import_playbook: k8s_frontend.yml

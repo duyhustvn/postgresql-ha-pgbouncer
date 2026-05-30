@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: os_prep
+  author: dify-pg-ha
+  description: OS baseline preparation for PostgreSQL HA nodes
+  license: MIT
+  min_ansible_version: "2.16"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+dependencies: []

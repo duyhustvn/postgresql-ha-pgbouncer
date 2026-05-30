@@ -1,0 +1,7 @@
+.vault_pass
+*.retry
+__pycache__/
+.cache/
+inventories/*/host_vars/*.local.yml
+*.pyc
+.ansible/

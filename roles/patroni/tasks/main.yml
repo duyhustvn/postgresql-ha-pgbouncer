@@ -1,0 +1,5 @@
+---
+- name: TODO - Patroni tasks
+  ansible.builtin.debug:
+    msg: "TODO: implement patroni tasks (install, configure, bootstrap cluster)"
+  tags: [patroni, patroni-install, patroni-config]

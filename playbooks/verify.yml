@@ -1,0 +1,29 @@
+---
+- name: Verify etcd cluster health
+  hosts: etcd
+  become: true
+  gather_facts: false
+  tags: [verify, verify-etcd]
+  tasks:
+    - name: TODO - verify etcd member list
+      ansible.builtin.debug:
+        msg: "TODO: etcd member list check"
+
+- name: Verify Patroni cluster health
+  hosts: db_nodes
+  become: true
+  gather_facts: false
+  tags: [verify, verify-patroni]
+  tasks:
+    - name: TODO - verify patronictl list
+      ansible.builtin.debug:
+        msg: "TODO: patronictl list check"
+
+- name: Verify PgBouncer connectivity
+  hosts: k8s_admin
+  gather_facts: false
+  tags: [verify, verify-pgbouncer]
+  tasks:
+    - name: TODO - verify PgBouncer service
+      ansible.builtin.debug:
+        msg: "TODO: PgBouncer service check"

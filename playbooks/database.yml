@@ -1,0 +1,16 @@
+---
+- name: Deploy PostgreSQL 16
+  hosts: db_nodes
+  become: true
+  gather_facts: true
+  roles:
+    - role: postgresql
+      tags: [postgresql]
+
+- name: Deploy Patroni
+  hosts: db_nodes
+  become: true
+  gather_facts: true
+  roles:
+    - role: patroni
+      tags: [patroni]

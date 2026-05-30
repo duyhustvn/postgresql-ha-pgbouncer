@@ -1,0 +1,5 @@
+---
+patroni_config_dir: /etc/patroni
+patroni_log_dir: /var/log/patroni
+patroni_rest_port: 8008
+patroni_watchdog_mode: "off"

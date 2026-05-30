@@ -1,0 +1,9 @@
+---
+- name: Deploy HAProxy and PgBouncer to Kubernetes
+  hosts: k8s_admin
+  gather_facts: false
+  roles:
+    - role: haproxy
+      tags: [haproxy]
+    - role: pgbouncer
+      tags: [pgbouncer]
