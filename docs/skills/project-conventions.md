@@ -38,9 +38,9 @@ all:
   children:
     db_nodes:
       hosts:
-        pg1: { ansible_host: 10.0.0.1, patroni_name: pg1, etcd_name: etcd1 }
-        pg2: { ansible_host: 10.0.0.2, patroni_name: pg2, etcd_name: etcd2 }
-        pg3: { ansible_host: 10.0.0.3, patroni_name: pg3, etcd_name: etcd3 }
+        pg1: { ansible_host: 192.168.56.111, patroni_name: pg1, etcd_name: etcd1 }
+        pg2: { ansible_host: 192.168.56.112, patroni_name: pg2, etcd_name: etcd2 }
+        pg3: { ansible_host: 192.168.56.113, patroni_name: pg3, etcd_name: etcd3 }
     etcd:
       hosts:
         pg1: {}
@@ -57,8 +57,8 @@ all:
 ```yaml
 cluster_name: dify-pg
 postgresql_version: "16"
-patroni_version: "4.0.3"
-etcd_version: "v3.5.13"
+patroni_version: "4.1.3"
+etcd_version: "v3.5.30"
 haproxy_image: "haproxy:2.9"
 pgbouncer_image: "edoburu/pgbouncer:1.23"
 k8s_namespace: db
@@ -133,6 +133,18 @@ Templates Jinja2 đặt header chuẩn:
 # {{ ansible_managed }}
 # Generated for cluster {{ cluster_name }} - DO NOT EDIT MANUALLY
 ```
+
+## Disk layout convention
+
+Mỗi VM có 2 phân vùng: OS (`/`) và data (`/u01`). **Mọi data dịch vụ đều nằm dưới `/u01`.**
+
+| Dịch vụ | Đường dẫn |
+|---|---|
+| etcd data | `/u01/etcd` |
+| PostgreSQL PGDATA | `/u01/postgresql/16/main` |
+
+Role `os_prep` phải verify `/u01` đã mount trước khi tạo thư mục con (dùng `ansible.builtin.stat` + `ansible.builtin.fail`).
+Không tạo thư mục data trực tiếp dưới `/var/lib` hay `/` — vi phạm convention này là bug.
 
 ## Không làm những điều sau
 

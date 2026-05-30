@@ -15,7 +15,8 @@ Implement `roles/os_prep` để chuẩn bị 3 PG node sẵn sàng cho etcd + Pa
   - `net.ipv4.tcp_keepalive_time = 60`
   - `kernel.shmmax`, `kernel.shmall` đủ cho shared_buffers.
 - Load kernel module `softdog` (Patroni watchdog), persist trong `/etc/modules-load.d/softdog.conf`.
-- Tạo thư mục data NVMe nếu mount điểm tồn tại: `/var/lib/postgresql`, `/var/lib/etcd` (đề xuất 2 disk khác nhau — biến `pg_data_mount` và `etcd_data_mount`, mặc định `/var/lib`).
+- Verify `/u01` đã mount (fail fast nếu chưa — tránh ghi nhầm vào OS partition).
+- Tạo thư mục data dưới `/u01`: `/u01/etcd`, `/u01/postgresql` (biến `etcd_data_dir` và `postgresql_data_dir`, mặc định như trên).
 - Mở firewall (ufw hoặc nftables tùy distro) cổng: 5432, 8008, 2379, 2380 — chỉ allow từ `network_cidr`. Skip nếu firewall không active.
 - Sync time qua chrony, đảm bảo offset < 100ms (Patroni leader election nhạy với clock skew).
 
@@ -38,7 +39,7 @@ roles/os_prep/
 │   ├── watchdog.yml
 │   ├── firewall.yml
 │   └── time_sync.yml
-├── defaults/main.yml        # vm_nr_hugepages, network_cidr, …
+├── defaults/main.yml        # vm_nr_hugepages, network_cidr, etcd_data_dir, postgresql_data_dir, …
 ├── handlers/main.yml        # reload sysctl, restart chrony
 ├── meta/main.yml
 └── README.md
@@ -71,6 +72,7 @@ playbooks/os_prep.yml         # gọi role os_prep cho group db_nodes
   ```
 - Firewall: detect `ufw` hay `firewalld` qua `ansible_facts['service_mgr']` hoặc kiểm `which ufw`. Skip nếu không có. Mở cổng từ `network_cidr` thôi, không `0.0.0.0/0`.
 - Time sync: cài `chrony`, enable service. Verify với `chronyc tracking` (`changed_when: false`).
+- Verify `/u01` mount: dùng `ansible.builtin.stat` kiểm tra `mountpoint: /u01`, fail với `ansible.builtin.fail` nếu chưa mount — không tạo thư mục con nếu chưa có data partition.
 - Mọi task có `tags: [os-prep, os-prep-<sub>]` (sysctl, hugepages, watchdog…).
 
 ## Acceptance criteria
@@ -83,5 +85,6 @@ playbooks/os_prep.yml         # gọi role os_prep cho group db_nodes
    - `lsmod | grep softdog` thấy module.
    - `ls /dev/watchdog*` thấy device.
    - `id postgres` và `id etcd` tồn tại.
+   - `stat /u01/etcd` và `stat /u01/postgresql` tồn tại với ownership đúng.
 4. `ansible-lint` clean.
 5. `--check --diff` chạy được không lỗi (idempotency).

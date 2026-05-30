@@ -5,12 +5,12 @@ Spec cho roles `postgresql` + `patroni`. Phase liên quan: 4, 6.
 ## Phiên bản & cài đặt
 
 - PostgreSQL 16 (Ubuntu PGDG repo).
-- Patroni 4.0.x cài qua `pip install 'patroni[etcd3]'` trong Python venv `/opt/patroni/venv`.
+- Patroni 4.1.3 cài qua `pip install 'patroni[etcd3]'` trong Python venv `/opt/patroni/venv`.
 - Lý do dùng venv: tránh xung đột Python system, dễ nâng cấp Patroni.
 
 ## Phân chia role
 
-- **`roles/postgresql`**: chỉ cài binary + cấu hình baseline (`apt` PGDG, không initdb, vì Patroni làm việc đó). Tạo data dir trống `/var/lib/postgresql/16/main`.
+- **`roles/postgresql`**: chỉ cài binary + cấu hình baseline (`apt` PGDG, không initdb, vì Patroni làm việc đó). Tạo data dir trống `/u01/postgresql/16/main`.
 - **`roles/patroni`**: cài Patroni vào venv, sinh `patroni.yml`, systemd unit, chạy. Patroni sẽ tự initdb lần đầu trên primary, basebackup trên replica.
 
 ## Tham số patroni.yml (bootstrap)
@@ -80,7 +80,7 @@ bootstrap:
 postgresql:
   listen: 0.0.0.0:5432
   connect_address: {{ ansible_host }}:5432
-  data_dir: /var/lib/postgresql/16/main
+  data_dir: /u01/postgresql/16/main
   bin_dir: /usr/lib/postgresql/16/bin
   pgpass: /tmp/pgpass0
   authentication:

@@ -8,7 +8,7 @@ Implement `roles/etcd` để cài 3-node etcd cluster làm DCS cho Patroni. Cu�
 
 - Download binary etcd từ GitHub release, version pin (`etcd_version`).
 - Cài binary vào `/usr/local/bin/etcd` và `/usr/local/bin/etcdctl`.
-- Tạo data dir `/var/lib/etcd` owner `etcd:etcd`, mode 0700.
+- Tạo data dir `/u01/etcd` owner `etcd:etcd`, mode 0700.
 - Sinh config `/etc/etcd/etcd.conf.yml` từ template, các giá trị động lấy từ `groups['etcd']` và `hostvars`.
 - Sinh systemd unit `/etc/systemd/system/etcd.service`.
 - Bootstrap 3 node song song (initial-cluster-state = `new`).
@@ -66,7 +66,7 @@ playbooks/etcd.yml            # gọi role etcd cho group etcd
     tasks:
       - import_role: { name: etcd, tasks_from: verify }
   ```
-- Khi đã bootstrap, lần chạy thứ 2 KHÔNG được sửa `initial-cluster-state` (nếu vẫn `new` thì etcd vẫn ok vì check sau bootstrap). Nếu Claude Code muốn detect "đã bootstrap" → check sự tồn tại của `/var/lib/etcd/member/` thư mục, nếu có thì set var `etcd_bootstrapped: true` và skip task bootstrap-only.
+- Khi đã bootstrap, lần chạy thứ 2 KHÔNG được sửa `initial-cluster-state` (nếu vẫn `new` thì etcd vẫn ok vì check sau bootstrap). Nếu Claude Code muốn detect "đã bootstrap" → check sự tồn tại của `/u01/etcd/member/` thư mục, nếu có thì set var `etcd_bootstrapped: true` và skip task bootstrap-only.
 - Handler `restart etcd` phải dùng `listen` + chạy trên từng host tuần tự, KHÔNG đồng thời (sẽ làm sập quorum):
   ```yaml
   # Trong playbook gọi handler, set `serial: 1`
@@ -77,7 +77,7 @@ playbooks/etcd.yml            # gọi role etcd cho group etcd
 ## Acceptance criteria
 
 1. `ansible-playbook playbooks/etcd.yml` chạy lần đầu thành công.
-2. SSH vào pg1: `etcdctl --endpoints=http://10.0.0.1:2379,http://10.0.0.2:2379,http://10.0.0.3:2379 endpoint health` ra 3 dòng `healthy`.
+2. SSH vào pg1: `etcdctl --endpoints=http://192.168.56.111:2379,http://192.168.56.112:2379,http://192.168.56.113:2379 endpoint health` ra 3 dòng `healthy`.
 3. `etcdctl ... endpoint status -w table` cho thấy 1 node có `IS_LEADER: true`.
 4. Chạy lại playbook → KHÔNG có changed.
 5. Kill 1 etcd (`systemctl stop etcd` trên pg2), cluster vẫn healthy với 2/3, leader vẫn tồn tại (có thể bị re-elect). Bật lại → quay về 3/3.

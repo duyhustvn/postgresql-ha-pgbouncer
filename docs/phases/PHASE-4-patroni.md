@@ -117,7 +117,7 @@ roles/patroni/
   ```yaml
   - ansible.builtin.pip:
       name:
-        - "patroni[etcd3]==4.0.3"
+        - "patroni[etcd3]==4.1.3"
         - "psycopg[binary]"
       virtualenv: /opt/patroni/venv
       virtualenv_command: python3 -m venv
@@ -135,9 +135,9 @@ roles/patroni/
    + Cluster: dify-pg -+--------+---------+----+-----------+
    | Member | Host     | Role   | State   | TL | Lag in MB |
    +--------+----------+--------+---------+----+-----------+
-   | pg1    | 10.0.0.1 | Leader | running |  1 |           |
-   | pg2    | 10.0.0.2 | Replica| running |  1 |       0   |
-   | pg3    | 10.0.0.3 | Replica| running |  1 |       0   |
+   | pg1    | 192.168.56.111 | Leader | running |  1 |           |
+   | pg2    | 192.168.56.112 | Replica| running |  1 |       0   |
+   | pg3    | 192.168.56.113 | Replica| running |  1 |       0   |
    +--------+----------+--------+---------+----+-----------+
    ```
 3. Từ Ansible controller: `PGPASSWORD=... psql -h <primary> -U dify -d dify -c 'SELECT 1'` ra 1.

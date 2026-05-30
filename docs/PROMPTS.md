@@ -76,7 +76,7 @@ Nhiệm vụ: Implement role `roles/etcd` và playbook `playbooks/etcd.yml` theo
 Ràng buộc đặc biệt:
 - Bootstrap pattern phải đúng: 3 node start gần đồng thời với initial-cluster-state=new.
 - Handler `restart etcd` được thiết kế để playbook gọi phải dùng serial:1 (không restart đồng thời).
-- Detect "đã bootstrap" qua sự tồn tại của /var/lib/etcd/member/ để skip task bootstrap-only khi chạy lại.
+- Detect "đã bootstrap" qua sự tồn tại của /u01/etcd/member/ để skip task bootstrap-only khi chạy lại.
 - Health verify dùng run_once + delegate_to + retry.
 
 Hoàn thành xong:

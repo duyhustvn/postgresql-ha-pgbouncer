@@ -4,14 +4,14 @@ Spec cho role `etcd`. Phase liên quan: 3, 6.
 
 ## Phiên bản & nguồn
 
-- etcd `v3.5.13` (pin trong `group_vars/all/main.yml` qua biến `etcd_version`).
+- etcd `v3.5.30` (pin trong `group_vars/all/main.yml` qua biến `etcd_version`).
 - Tải từ GitHub release: `https://github.com/etcd-io/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-amd64.tar.gz`.
 - Binary đặt vào `/usr/local/bin/etcd` và `/usr/local/bin/etcdctl`, mode 0755, owner root.
 
 ## User & directories
 
 - User hệ thống: `etcd:etcd`, no login shell.
-- Data dir: `/var/lib/etcd`, mode 0700, owner `etcd:etcd`.
+- Data dir: `/u01/etcd`, mode 0700, owner `etcd:etcd`.
 - Config dir: `/etc/etcd`, mode 0750.
 - Config file: `/etc/etcd/etcd.conf.yml`.
 
@@ -21,7 +21,7 @@ Các tham số bắt buộc (giá trị lấy từ inventory):
 
 ```yaml
 name: '{{ etcd_name }}'                       # từ hostvars (etcd1/etcd2/etcd3)
-data-dir: /var/lib/etcd
+data-dir: /u01/etcd
 listen-client-urls: 'http://{{ ansible_host }}:2379,http://127.0.0.1:2379'
 advertise-client-urls: 'http://{{ ansible_host }}:2379'
 listen-peer-urls: 'http://{{ ansible_host }}:2380'

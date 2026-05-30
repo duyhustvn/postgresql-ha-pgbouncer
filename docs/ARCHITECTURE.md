@@ -16,7 +16,7 @@
        │
        │  ──── ra ngoài K8s ────
        ▼
-[3 PG nodes vật lý: 10.0.0.1, 10.0.0.2, 10.0.0.3]
+[3 PG nodes vật lý: 192.168.56.111, 192.168.56.112, 192.168.56.113]
    Mỗi node: Patroni + PostgreSQL 16 + etcd member
 ```
 
@@ -49,7 +49,7 @@ Dify pod  ─►  ClusterIP svc pgbouncer.db.svc:6432
           ─►  PgBouncer pod (transaction pooling: gộp ~540 client → ≤50 backend conn / pod)
           ─►  ClusterIP svc pg-haproxy.db.svc:5000
           ─►  HAProxy pod (httpchk: chỉ pg primary mới UP)
-          ─►  10.0.0.X:5432  (Patroni-managed PostgreSQL primary)
+          ─►  192.168.56.11X:5432  (Patroni-managed PostgreSQL primary)
 ```
 
 ## Phép tính phễu (worst-case)
@@ -88,6 +88,26 @@ Quy tắc kiểm soát: `pgbouncer_replicas × (default_pool_size + reserve_pool
 
 - pgBackRest WAL archiving → object storage (S3/MinIO).
 - Patroni bootstrap có thể restore từ pgBackRest. Sẽ làm trong giai đoạn day-2.
+
+## Disk layout (VM)
+
+Mỗi PG node có **2 phân vùng**:
+
+| Phân vùng | Mount point | Nội dung |
+|---|---|---|
+| OS partition | `/` | Ubuntu 22.04, system binaries, logs |
+| Data partition | `/u01` | Tất cả data dịch vụ (etcd, PostgreSQL, Patroni venv) |
+
+Quy ước đường dẫn data:
+
+| Dịch vụ | Đường dẫn |
+|---|---|
+| etcd data dir | `/u01/etcd` |
+| PostgreSQL PGDATA | `/u01/postgresql/16/main` |
+| Patroni venv | `/opt/patroni/venv` (OS partition, binary nhỏ) |
+| Patroni config | `/etc/patroni/patroni.yml` (OS partition) |
+
+> Role `os_prep` phải verify `/u01` đã mount trước khi tạo các thư mục con.
 
 ## Outside scope
 
