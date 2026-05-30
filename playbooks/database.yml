@@ -1,16 +1,98 @@
 ---
-- name: Deploy PostgreSQL 16
+# Phase 4: PostgreSQL 16 + Patroni cluster deployment
+#
+# Execution order:
+#   1. All nodes: install PG binary + Patroni venv + config (parallel)
+#   2. First node only: bootstrap leader, wait for /primary 200
+#   3. Remaining nodes: join as replicas one-by-one (serial:1), wait for /replica 200
+#   4. Delegate to dynamic primary: create dify user + dify database
+
+# ── Stage 1: install & configure on all nodes in parallel ──────────────────
+- name: Install PostgreSQL and Patroni on all db_nodes
   hosts: db_nodes
   become: true
   gather_facts: true
-  roles:
-    - role: postgresql
+  tasks:
+    - name: Deploy PostgreSQL binary
+      ansible.builtin.import_role:
+        name: postgresql
       tags: [postgresql]
 
-- name: Deploy Patroni
-  hosts: db_nodes
+    - name: Install Patroni venv
+      ansible.builtin.import_role:
+        name: patroni
+        tasks_from: install
+      tags: [patroni]
+
+    - name: Configure Patroni (patroni.yml + systemd unit)
+      ansible.builtin.import_role:
+        name: patroni
+        tasks_from: configure
+      tags: [patroni]
+
+# ── Stage 2: bootstrap leader (first node only) ────────────────────────────
+- name: Bootstrap Patroni leader
+  hosts: "{{ groups['db_nodes'][0] }}"
   become: true
   gather_facts: true
-  roles:
-    - role: patroni
+  tasks:
+    - name: Start Patroni and wait for primary
+      ansible.builtin.import_role:
+        name: patroni
+        tasks_from: bootstrap_leader
       tags: [patroni]
+
+# ── Stage 3: replica join (one at a time) ─────────────────────────────────
+- name: Join Patroni replicas
+  hosts: "{{ groups['db_nodes'][1:] | join(',') }}"
+  become: true
+  gather_facts: true
+  serial: 1
+  tasks:
+    - name: Start Patroni and wait for replica streaming
+      ansible.builtin.import_role:
+        name: patroni
+        tasks_from: join_replica
+      tags: [patroni]
+
+# ── Stage 4: create dify user and database on dynamic primary ──────────────
+- name: Create application user and database
+  hosts: "{{ groups['db_nodes'][0] }}"
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Discover current Patroni primary
+      ansible.builtin.import_role:
+        name: patroni
+        tasks_from: find_primary
+      tags: [patroni, db-provision]
+
+    - name: Create dify role
+      community.postgresql.postgresql_user:
+        name: dify
+        password: "{{ dify_db_password }}"
+        role_attr_flags: LOGIN
+        login_user: postgres
+        login_unix_socket: /var/run/postgresql
+        state: present
+      become_user: postgres
+      delegate_to: "{{ patroni_primary_inventory_host }}"
+      run_once: true
+      no_log: true
+      tags: [patroni, db-provision]
+
+    - name: Create dify database
+      community.postgresql.postgresql_db:
+        name: dify
+        owner: dify
+        encoding: UTF8
+        lc_collate: "en_US.UTF-8"
+        lc_ctype: "en_US.UTF-8"
+        template: template0
+        login_user: postgres
+        login_unix_socket: /var/run/postgresql
+        state: present
+      become_user: postgres
+      delegate_to: "{{ patroni_primary_inventory_host }}"
+      run_once: true
+      tags: [patroni, db-provision]

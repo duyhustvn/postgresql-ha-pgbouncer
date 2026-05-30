@@ -1,0 +1,56 @@
+---
+# Query Patroni /cluster on any live db_node to discover the current primary.
+# Sets fact `patroni_primary_host` = ansible_host of the primary member.
+# Include this file, then delegate_to: "{{ patroni_primary_host }}" in caller tasks.
+
+- name: Query Patroni cluster endpoint to find primary
+  ansible.builtin.uri:
+    url: "http://{{ hostvars[item].ansible_host }}:{{ patroni_rest_port }}/cluster"
+    method: GET
+    return_content: true
+    status_code: 200
+  register: _patroni_cluster_resp
+  loop: "{{ groups['db_nodes'] }}"
+  until: _patroni_cluster_resp.status == 200
+  retries: 6
+  delay: 5
+  run_once: true
+  delegate_to: localhost
+  ignore_errors: true
+  tags: [patroni, patroni-find-primary]
+
+- name: Set patroni_primary_host fact from cluster response
+  ansible.builtin.set_fact:
+    patroni_primary_host: >-
+      {{
+        (
+          _patroni_cluster_resp.results
+          | selectattr('status', 'equalto', 200)
+          | map(attribute='json')
+          | map(attribute='members')
+          | first
+          | selectattr('role', 'equalto', 'Leader')
+          | map(attribute='host')
+          | first
+        ).split(':')[0]
+      }}
+  run_once: true
+  delegate_to: localhost
+  delegate_facts: true
+  tags: [patroni, patroni-find-primary]
+
+- name: Resolve patroni_primary_host to inventory host
+  ansible.builtin.set_fact:
+    patroni_primary_inventory_host: >-
+      {{
+        groups['db_nodes']
+        | map('extract', hostvars, 'ansible_host')
+        | zip(groups['db_nodes'])
+        | selectattr(0, 'equalto', patroni_primary_host)
+        | map(attribute=1)
+        | first
+      }}
+  run_once: true
+  delegate_to: localhost
+  delegate_facts: true
+  tags: [patroni, patroni-find-primary]

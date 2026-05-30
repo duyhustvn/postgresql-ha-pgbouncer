@@ -24,13 +24,28 @@ bootstrap:
       use_pg_rewind: true
       use_slots: true
       parameters:
-        {# TODO 4b: fill full PostgreSQL performance parameters from patroni-spec.md #}
         max_connections: 200
+        shared_buffers: 16GB
+        effective_cache_size: 48GB
+        work_mem: 32MB
+        maintenance_work_mem: 2GB
         wal_level: replica
+        max_wal_size: 8GB
+        min_wal_size: 2GB
+        checkpoint_completion_target: 0.9
+        checkpoint_timeout: 15min
         wal_log_hints: 'on'
         hot_standby: 'on'
+        wal_keep_size: 1GB
         max_wal_senders: 10
         max_replication_slots: 10
+        random_page_cost: 1.1
+        effective_io_concurrency: 200
+        idle_in_transaction_session_timeout: 60s
+        huge_pages: try
+        log_min_duration_statement: 1000
+        log_temp_files: 0
+        log_lock_waits: 'on'
 
   initdb:
     - encoding: UTF8
