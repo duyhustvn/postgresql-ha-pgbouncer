@@ -1,0 +1,13 @@
+---
+# Skipped when os_prep_vm_nr_hugepages=0 (default) — safe for small test VMs.
+# For production with shared_buffers=16GB, set os_prep_vm_nr_hugepages: 8400
+# in group_vars/db_nodes/main.yml.
+- name: Reserve huge pages for PostgreSQL shared_buffers
+  ansible.posix.sysctl:
+    name: vm.nr_hugepages
+    value: "{{ os_prep_vm_nr_hugepages }}"
+    sysctl_file: "{{ os_prep_sysctl_file }}"
+    state: present
+    reload: true
+  when: os_prep_vm_nr_hugepages | int > 0
+  tags: [os_prep, os_prep-config, os_prep-hugepages]

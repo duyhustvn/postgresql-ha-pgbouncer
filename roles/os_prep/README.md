@@ -4,8 +4,12 @@ OS baseline preparation for all PostgreSQL HA nodes.
 
 ## Purpose
 
-Applies OS-level requirements before any service is installed: packages, sysctl
-tuning, user/group creation, and ensuring `/u01` (data partition) is accessible.
+Applies OS-level requirements before any service is installed:
+packages, system users, sysctl tuning, huge pages, and kernel watchdog.
+
+**Not managed by this role** (handled externally):
+- Firewall rules — managed via iptables directly on each node
+- Time synchronization — managed via existing infrastructure
 
 ## Variables
 
@@ -13,12 +17,33 @@ tuning, user/group creation, and ensuring `/u01` (data partition) is accessible.
 
 | Variable | Default | Description |
 |---|---|---|
-| `os_prep_data_mount` | `/u01` | Mount point for the data partition |
-| `os_prep_required_packages` | `[python3-psycopg2, acl, curl, ca-certificates]` | Extra packages to ensure installed |
+| `os_prep_data_mount` | `/u01` | Data partition mount point used for pre-flight check |
+| `os_prep_verify_mount` | `true` | Fail if `/u01` is not a separate mountpoint. Set `false` in test/dev |
+| `os_prep_required_packages` | see defaults | Base packages to install via apt |
+| `etcd_data_dir` | `/u01/etcd` | etcd data directory (created with `etcd:etcd` ownership) |
+| `postgresql_data_dir` | `/u01/postgresql` | PostgreSQL data root (created with `postgres:postgres` ownership) |
+| `vm_nr_hugepages` | `0` (disabled) | Number of 2MB huge pages. Set `8400` for 16GB shared_buffers |
+| `vm_overcommit_memory` | `2` | OOM protection — never overcommit |
+| `vm_swappiness` | `1` | Minimize swapping |
+| `net_tcp_keepalive_time` | `60` | TCP keepalive interval (seconds) |
+| `kernel_shmmax` | `17179869184` | SysV shmmax in bytes (16GiB default) |
+| `kernel_shmall` | `4194304` | SysV shmall pages (shmmax / 4096) |
+| `os_prep_sysctl_file` | `/etc/sysctl.d/99-ansible-os-prep.conf` | Persisted sysctl file |
 
 ### Required (no default — must be set in inventory)
 
-None at this phase.
+None.
+
+## Production tuning
+
+For a production server with 64GB RAM and `shared_buffers = 16GB`:
+
+```yaml
+# group_vars/db_nodes/main.yml
+vm_nr_hugepages: 8400   # get exact value: postgres -C shared_memory_size_in_huge_pages
+kernel_shmmax: 17179869184
+kernel_shmall: 4194304
+```
 
 ## Dependencies
 
@@ -27,11 +52,17 @@ None.
 ## Example
 
 ```yaml
-- name: OS baseline
-  hosts: db_nodes
-  become: true
-  roles:
-    - role: os_prep
+# Run full role
+ansible-playbook playbooks/os_prep.yml
+
+# Run only sysctl tuning
+ansible-playbook playbooks/os_prep.yml --tags os_prep-sysctl
+
+# Skip mount check (test/dev environment)
+ansible-playbook playbooks/os_prep.yml -e os_prep_verify_mount=false
+
+# Dry run
+ansible-playbook playbooks/os_prep.yml --check --diff
 ```
 
 ## Tags
@@ -40,4 +71,7 @@ None.
 |---|---|
 | `os_prep` | All tasks |
 | `os_prep-install` | Package installation |
-| `os_prep-config` | sysctl / limits / directory setup |
+| `os_prep-config` | Users, sysctl, hugepages, watchdog |
+| `os_prep-sysctl` | Only sysctl parameters |
+| `os_prep-hugepages` | Only huge pages |
+| `os_prep-watchdog` | Only softdog / udev rule |

@@ -8,5 +8,11 @@ pg_max_connections: 200
 pg_work_mem: "32MB"
 pg_shared_buffers: "256MB"
 
+# Huge pages: number of 2MB pages to reserve for PostgreSQL shared_buffers
+# Formula: ceil(shared_buffers_MB / 2) + overhead
+# For 16GB: ~8400 pages. Run `postgres -C shared_memory_size_in_huge_pages` after PG install.
+# Set to 0 to disable (safe for small test VMs).
+os_prep_vm_nr_hugepages: 0
+
 # Patroni watchdog: set to 'required' in production, 'off' for testing
 patroni_watchdog_mode: "off"

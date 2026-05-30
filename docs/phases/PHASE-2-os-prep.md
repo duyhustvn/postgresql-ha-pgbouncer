@@ -77,14 +77,52 @@ playbooks/os_prep.yml         # gọi role os_prep cho group db_nodes
 
 ## Acceptance criteria
 
-1. `ansible-playbook playbooks/os_prep.yml` chạy thành công lần đầu.
-2. Chạy lại lần 2 → KHÔNG có task `changed`.
-3. SSH vào từng PG node, verify:
-   - `sysctl vm.overcommit_memory` ra `2`.
-   - `sysctl vm.nr_hugepages` ra giá trị template.
-   - `lsmod | grep softdog` thấy module.
-   - `ls /dev/watchdog*` thấy device.
-   - `id postgres` và `id etcd` tồn tại.
-   - `stat /u01/etcd` và `stat /u01/postgresql` tồn tại với ownership đúng.
-4. `ansible-lint` clean.
-5. `--check --diff` chạy được không lỗi (idempotency).
+### Từ Ansible controller
+
+```bash
+# 1. Chạy lần đầu — phải thành công, không error
+ansible-playbook playbooks/os_prep.yml
+
+# 2. Chạy lại lần 2 — không có task nào "changed"
+ansible-playbook playbooks/os_prep.yml
+
+# 3. Dry-run phải chạy được không lỗi
+ansible-playbook playbooks/os_prep.yml --check --diff
+
+# 4. Lint sạch
+ansible-lint roles/os_prep/
+
+# 5. Verify từ xa qua ad-hoc (thay thế SSH tay, chạy trên cả 3 node)
+ansible db_nodes -b -m command -a "sysctl vm.overcommit_memory vm.swappiness net.ipv4.tcp_keepalive_time"
+ansible db_nodes -b -m command -a "lsmod | grep softdog"
+ansible db_nodes -b -m command -a "ls -la /dev/watchdog"
+ansible db_nodes -b -m command -a "id postgres; id etcd"
+ansible db_nodes -b -m stat -a "path=/u01/etcd"
+ansible db_nodes -b -m stat -a "path=/u01/postgresql"
+ansible db_nodes -b -m command -a "cat /etc/sysctl.d/99-ansible-os-prep.conf"
+ansible db_nodes -b -m command -a "cat /etc/modules-load.d/softdog.conf"
+```
+
+### Kết quả mong đợi
+
+| Lệnh verify | Kết quả mong đợi |
+|---|---|
+| `sysctl vm.overcommit_memory` | `vm.overcommit_memory = 2` |
+| `sysctl vm.swappiness` | `vm.swappiness = 1` |
+| `sysctl net.ipv4.tcp_keepalive_time` | `net.ipv4.tcp_keepalive_time = 60` |
+| `lsmod \| grep softdog` | dòng chứa `softdog` |
+| `ls -la /dev/watchdog` | owner `postgres`, mode `600` |
+| `id postgres` | system user tồn tại |
+| `id etcd` | system user tồn tại |
+| `stat /u01/etcd` | Uid: `etcd`, mode `0700` |
+| `stat /u01/postgresql` | Uid: `postgres`, mode `0700` |
+
+### Lưu ý môi trường test
+
+Nếu chạy trên VM không có `/u01` mount riêng, thêm flag:
+
+```bash
+ansible-playbook playbooks/os_prep.yml -e os_prep_verify_mount=false
+```
+
+Nếu VM nhỏ (< 16GB RAM), giữ `os_prep_vm_nr_hugepages: 0` trong group_vars — huge pages task tự skip.

@@ -1,0 +1,45 @@
+---
+- name: Prevent OOM killer from targeting PostgreSQL (vm.overcommit_memory)
+  ansible.posix.sysctl:
+    name: vm.overcommit_memory
+    value: "{{ os_prep_vm_overcommit_memory }}"
+    sysctl_file: "{{ os_prep_sysctl_file }}"
+    state: present
+    reload: true
+  tags: [os_prep, os_prep-config, os_prep-sysctl]
+
+- name: Minimize swapping (vm.swappiness)
+  ansible.posix.sysctl:
+    name: vm.swappiness
+    value: "{{ os_prep_vm_swappiness }}"
+    sysctl_file: "{{ os_prep_sysctl_file }}"
+    state: present
+    reload: true
+  tags: [os_prep, os_prep-config, os_prep-sysctl]
+
+- name: Faster TCP keepalive for connection failure detection
+  ansible.posix.sysctl:
+    name: net.ipv4.tcp_keepalive_time
+    value: "{{ os_prep_net_tcp_keepalive_time }}"
+    sysctl_file: "{{ os_prep_sysctl_file }}"
+    state: present
+    reload: true
+  tags: [os_prep, os_prep-config, os_prep-sysctl]
+
+- name: Set kernel.shmmax (SysV shared memory upper bound)
+  ansible.posix.sysctl:
+    name: kernel.shmmax
+    value: "{{ os_prep_kernel_shmmax }}"
+    sysctl_file: "{{ os_prep_sysctl_file }}"
+    state: present
+    reload: true
+  tags: [os_prep, os_prep-config, os_prep-sysctl]
+
+- name: Set kernel.shmall (total shared memory pages)
+  ansible.posix.sysctl:
+    name: kernel.shmall
+    value: "{{ os_prep_kernel_shmall }}"
+    sysctl_file: "{{ os_prep_sysctl_file }}"
+    state: present
+    reload: true
+  tags: [os_prep, os_prep-config, os_prep-sysctl]

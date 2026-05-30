@@ -1,2 +1,21 @@
 ---
-[]
+# Triggered by sysctl.yml if a sysctl.d file changes (fallback — individual tasks use reload: true)
+- name: Reload sysctl
+  ansible.builtin.command:
+    cmd: sysctl --system
+  changed_when: false
+  listen: reload sysctl
+
+# Triggered by watchdog.yml when udev rule changes; also applies rules to existing devices
+- name: Reload udev rules
+  ansible.builtin.command:
+    cmd: udevadm control --reload-rules
+  changed_when: false
+  listen: reload udev
+
+- name: Apply udev rules to watchdog device
+  ansible.builtin.command:
+    cmd: udevadm trigger --name-match=watchdog
+  changed_when: false
+  failed_when: false
+  listen: reload udev

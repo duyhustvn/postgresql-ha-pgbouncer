@@ -1,0 +1,42 @@
+---
+- name: Load softdog kernel module
+  community.general.modprobe:
+    name: softdog
+    state: present
+  tags: [os_prep, os_prep-config, os_prep-watchdog]
+
+- name: Persist softdog at boot
+  ansible.builtin.copy:
+    content: "softdog\n"
+    dest: /etc/modules-load.d/softdog.conf
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [os_prep, os_prep-config, os_prep-watchdog]
+
+# udev rule persists ownership across reboots when the device node is recreated
+- name: Create udev rule for watchdog device ownership
+  ansible.builtin.copy:
+    content: "KERNEL==\"watchdog\", OWNER=\"postgres\", GROUP=\"postgres\", MODE=\"0600\"\n"
+    dest: /etc/udev/rules.d/99-watchdog.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload udev
+  tags: [os_prep, os_prep-config, os_prep-watchdog]
+
+- name: Check if watchdog device exists
+  ansible.builtin.stat:
+    path: /dev/watchdog
+  register: os_prep_watchdog_dev
+  tags: [os_prep, os_prep-config, os_prep-watchdog]
+
+# Apply immediately without waiting for next reboot
+- name: Set watchdog device permissions immediately
+  ansible.builtin.file:
+    path: /dev/watchdog
+    owner: postgres
+    group: postgres
+    mode: "0600"
+  when: os_prep_watchdog_dev.stat.exists
+  tags: [os_prep, os_prep-config, os_prep-watchdog]

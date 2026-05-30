@@ -1,5 +1,28 @@
 ---
-- name: TODO - OS preparation tasks
-  ansible.builtin.debug:
-    msg: "TODO: implement os_prep tasks (packages, sysctl, users, /u01 mount)"
-  tags: [os_prep, os_prep-install, os_prep-config]
+# Pre-flight: verify /u01 is a separate mountpoint before creating any subdirs.
+# Skip on non-production environments by setting os_prep_verify_mount: false.
+- name: Verify data partition is mounted
+  ansible.builtin.assert:
+    that: os_prep_data_mount in (ansible_mounts | map(attribute='mount') | list)
+    fail_msg: >-
+      {{ os_prep_data_mount }} is not a separate mountpoint.
+      Mount the data partition before running this role,
+      or set os_prep_verify_mount: false to skip this check.
+    success_msg: "{{ os_prep_data_mount }} is mounted"
+  when: os_prep_verify_mount | bool
+  tags: always
+
+- name: Install base packages
+  ansible.builtin.import_tasks: packages.yml
+
+- name: Create system users and data directories
+  ansible.builtin.import_tasks: users.yml
+
+- name: Apply sysctl parameters
+  ansible.builtin.import_tasks: sysctl.yml
+
+- name: Configure huge pages
+  ansible.builtin.import_tasks: hugepages.yml
+
+- name: Load watchdog kernel module
+  ansible.builtin.import_tasks: watchdog.yml
