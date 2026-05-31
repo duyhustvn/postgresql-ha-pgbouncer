@@ -51,6 +51,89 @@ ansible-playbook playbooks/verify.yml
 | `k8s_frontend.yml` | HAProxy + PgBouncer K8s Deployments |
 | `verify.yml` | Smoke-test cluster health |
 
+## PostgreSQL Users
+
+### Auto-created by Patroni bootstrap
+
+Patroni tạo các user này tự động khi bootstrap cluster (Stage 2 của `database.yml`). Không cần làm gì thêm.
+
+| User | Quyền | Password variable |
+|---|---|---|
+| `postgres` | Superuser | `vault_postgres_superuser_password` |
+| `admin` | `CREATEROLE CREATEDB` | `vault_postgres_superuser_password` |
+| `replicator` | Streaming replication | `vault_postgres_replication_password` |
+| `rewind_user` | `pg_rewind` | `vault_postgres_rewind_password` |
+
+### Cần tạo thủ công
+
+Các user này phải tạo sau khi cluster đã chạy. Kết nối vào primary node và chạy:
+
+```bash
+sudo -u postgres psql
+```
+
+**`pgbouncer_admin`** — bắt buộc nếu dùng PgBouncer admin/stats console:
+
+```sql
+CREATE ROLE pgbouncer_admin
+  WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE
+  PASSWORD 'your-password';
+```
+
+Sau khi tạo, thêm vào inventory và chạy lại `k8s_frontend.yml`:
+
+```yaml
+# inventories/prod/group_vars/all/main.yml
+pgbouncer_auth_users:
+  - pgbouncer_admin
+```
+
+### Application users
+
+Thêm application user vào Stage 4 của `database.yml`, khai báo database và user trong inventory:
+
+```yaml
+# inventories/prod/group_vars/all/main.yml
+pgbouncer_databases:
+  - { name: myapp, dbname: myapp }
+
+pgbouncer_auth_users:
+  - pgbouncer_admin
+  - myapp_user
+```
+
+Task mẫu tạo application user + database:
+
+```yaml
+- name: Create application role
+  community.postgresql.postgresql_user:
+    name: myapp_user
+    password: "{{ myapp_db_password }}"
+    role_attr_flags: LOGIN,NOSUPERUSER,NOCREATEDB,NOCREATEROLE
+    login_user: postgres
+    login_unix_socket: /var/run/postgresql
+    state: present
+  become_user: postgres
+  delegate_to: "{{ patroni_primary_inventory_host }}"
+  run_once: true
+  no_log: true
+
+- name: Create application database
+  community.postgresql.postgresql_db:
+    name: myapp
+    owner: myapp_user
+    encoding: UTF8
+    lc_collate: "en_US.UTF-8"
+    lc_ctype: "en_US.UTF-8"
+    template: template0
+    login_user: postgres
+    login_unix_socket: /var/run/postgresql
+    state: present
+  become_user: postgres
+  delegate_to: "{{ patroni_primary_inventory_host }}"
+  run_once: true
+```
+
 ## Day-2 operations
 
 ```bash

@@ -1,7 +1,9 @@
 ; {{ ansible_managed }}
 ; Generated for cluster {{ cluster_name }} - DO NOT EDIT MANUALLY
 [databases]
-dify = host=pg-haproxy.{{ k8s_namespace }}.svc.cluster.local port={{ haproxy_frontend_port }} dbname=dify
+{% for db in pgbouncer_databases %}
+{{ db.name }} = host=pg-haproxy.{{ k8s_namespace }}.svc.cluster.local port={{ haproxy_frontend_port }} dbname={{ db.dbname }}
+{% endfor %}
 
 [pgbouncer]
 listen_addr = 0.0.0.0

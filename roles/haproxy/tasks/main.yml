@@ -1,4 +1,13 @@
 ---
+- name: Ensure kubernetes Python library is present on control node
+  ansible.builtin.pip:
+    name: kubernetes
+    state: present
+    extra_args: "--user --break-system-packages"
+  delegate_to: localhost
+  run_once: true
+  tags: [haproxy, haproxy-install, haproxy-config]
+
 - name: Render haproxy configuration
   ansible.builtin.include_tasks: render.yml
   tags: [haproxy, haproxy-config]

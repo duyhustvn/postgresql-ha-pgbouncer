@@ -61,7 +61,7 @@ patroni_version: "4.1.3"
 etcd_version: "v3.5.30"
 haproxy_image: "haproxy:2.9"
 pgbouncer_image: "edoburu/pgbouncer:1.23"
-k8s_namespace: db
+k8s_namespace: default
 k8s_pod_cidr: "10.244.0.0/16"
 patroni_ttl: 30
 patroni_loop_wait: 10

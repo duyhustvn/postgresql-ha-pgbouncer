@@ -1,7 +1,15 @@
 ---
+# List of DB aliases exposed through PgBouncer.
+# Each entry: { name: <alias>, dbname: <actual db name> }
+pgbouncer_databases: []
+
+# PostgreSQL users whose SCRAM verifiers are fetched and written to userlist.txt.
+# pgbouncer_admin is always required; add application users here.
+pgbouncer_auth_users: []
+
 pgbouncer_replicas: 3
 pgbouncer_port: 6432
-pgbouncer_image: "edoburu/pgbouncer:1.23"
+pgbouncer_image: "edoburu/pgbouncer:v1.25.1-p0"
 pgbouncer_pool_mode: transaction
 pgbouncer_max_client_conn: 2000
 pgbouncer_default_pool_size: 50

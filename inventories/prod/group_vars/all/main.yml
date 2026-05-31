@@ -4,9 +4,9 @@ postgresql_version: "16"
 patroni_version: "4.1.3"
 etcd_version: "v3.5.30"
 haproxy_image: "haproxy:2.9"
-pgbouncer_image: "edoburu/pgbouncer:1.23"
+pgbouncer_image: "edoburu/pgbouncer:v1.25.1-p0"
 
-k8s_namespace: db
+k8s_namespace: default
 k8s_pod_cidr: "10.244.0.0/16"
 # VM subnet — used in pg_hba rules (patroni role) and proxy bypass list
 network_cidr: "192.168.56.0/24"

@@ -1,4 +1,15 @@
 ---
+- name: Ensure psycopg2 and kubernetes Python libraries are present on control node
+  ansible.builtin.pip:
+    name:
+      - psycopg2-binary
+      - kubernetes
+    state: present
+    extra_args: "--user --break-system-packages"
+  delegate_to: localhost
+  run_once: true
+  tags: [pgbouncer, pgbouncer-install, pgbouncer-config]
+
 - name: Discover current Patroni primary
   ansible.builtin.include_tasks:
     file: "{{ role_path | dirname }}/patroni/tasks/find_primary.yml"

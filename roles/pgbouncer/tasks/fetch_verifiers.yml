@@ -12,25 +12,28 @@
       WHERE rolname = ANY(%s)
         AND rolpassword IS NOT NULL
     positional_args:
-      - ['dify', 'pgbouncer_admin']
+      - "{{ pgbouncer_auth_users }}"
   register: pgbouncer_scram_result
   delegate_to: localhost
   no_log: true
+  when: pgbouncer_auth_users | length > 0
   tags: [pgbouncer, pgbouncer-config]
 
-- name: Assert both SCRAM verifiers were returned
+- name: Assert all SCRAM verifiers were returned
   ansible.builtin.assert:
     that:
-      - pgbouncer_scram_result.query_result | length == 2
+      - pgbouncer_scram_result.query_result | length == pgbouncer_auth_users | length
     fail_msg: >
-      Expected 2 SCRAM verifiers (dify, pgbouncer_admin) but got
+      Expected {{ pgbouncer_auth_users | length }} SCRAM verifiers
+      ({{ pgbouncer_auth_users | join(', ') }}) but got
       {{ pgbouncer_scram_result.query_result | length }}.
-      Ensure phase 4 created both users with SCRAM-SHA-256 passwords.
+      Ensure all users exist in PostgreSQL with SCRAM-SHA-256 passwords.
     quiet: true
+  when: pgbouncer_auth_users | length > 0
   tags: [pgbouncer, pgbouncer-config]
 
 - name: Store SCRAM verifiers as fact
   ansible.builtin.set_fact:
-    pgbouncer_scram_verifiers: "{{ pgbouncer_scram_result.query_result }}"
+    pgbouncer_scram_verifiers: "{{ pgbouncer_scram_result.query_result | default([]) }}"
   no_log: true
   tags: [pgbouncer, pgbouncer-config]

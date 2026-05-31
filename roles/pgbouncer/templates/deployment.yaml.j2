@@ -39,9 +39,6 @@ spec:
       containers:
         - name: pgbouncer
           image: "{{ pgbouncer_image }}"
-          env:
-            - name: DB_USER
-              value: "dify"
           ports:
             - containerPort: {{ pgbouncer_port }}
               name: pgbouncer
