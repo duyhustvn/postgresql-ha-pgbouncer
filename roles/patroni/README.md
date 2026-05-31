@@ -3,6 +3,129 @@
 Installs Patroni into a Python venv, templates `patroni.yml` and the systemd unit,
 and provides entry-point task files for leader bootstrap and replica join.
 
+## Architecture
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│                   Patroni HA Cluster (3 nodes)                     │
+│                                                                    │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
+│  │       pg1        │  │       pg2        │  │       pg3        │  │
+│  │  192.168.56.111  │  │  192.168.56.112  │  │  192.168.56.113  │  │
+│  │                  │  │                  │  │                  │  │
+│  │ ┌──────────────┐ │  │ ┌──────────────┐ │  │ ┌──────────────┐ │  │
+│  │ │   Patroni    │ │  │ │   Patroni    │ │  │ │   Patroni    │ │  │
+│  │ │  REST :8008  │ │  │ │  REST :8008  │ │  │ │  REST :8008  │ │  │
+│  │ └──────┬───────┘ │  │ └──────┬───────┘ │  │ └──────┬───────┘ │  │
+│  │        │         │  │        │         │  │        │         │  │
+│  │ ┌──────▼───────┐ │  │ ┌──────▼───────┐ │  │ ┌──────▼───────┐ │  │
+│  │ │  PostgreSQL  │ │  │ │  PostgreSQL  │ │  │ │  PostgreSQL  │ │  │
+│  │ │   :5432      │ │  │ │   :5432      │ │  │ │   :5432      │ │  │
+│  │ │  [PRIMARY]   │ │  │ │  [REPLICA]   │ │  │ │  [REPLICA]   │ │  │
+│  │ └──────────────┘ │  │ └──────▲───────┘ │  │ └──────▲───────┘ │  │
+│  └──────────────────┘  └────────┼─────────┘  └────────┼─────────┘  │
+│           │                     │ streaming             │ streaming  │
+│           └─────────────────────┴───────────────────────┘           │
+│                         WAL replication                              │
+└────────────────────────────────────────────────────────────────────┘
+                   │                   │                   │
+           ┌───────▼───────────────────▼───────────────────▼───────┐
+           │              etcd Cluster (DCS)                        │
+           │   etcd1:2379    etcd2:2379    etcd3:2379               │
+           │          Leader election lock / cluster config          │
+           └────────────────────────────────────────────────────────┘
+```
+
+**Cơ chế hoạt động:**
+- Patroni sử dụng etcd làm DCS để giữ distributed lock cho leader.
+- Chỉ node nắm lock mới được chạy PostgreSQL ở vai trò PRIMARY.
+- Khi primary bị mất kết nối với etcd quá TTL (`patroni_ttl: 30s`), lock được giải phóng
+  và một replica sẽ thực hiện leader election và promote lên PRIMARY.
+- HAProxy health-check gọi `GET :8008/primary` (HTTP 200) và `GET :8008/replica` (HTTP 200)
+  để định tuyến kết nối đúng node.
+
+## Kiểm tra trạng thái (Status Commands)
+
+### Xem tổng quan cluster (khuyến nghị)
+
+```bash
+# Hiển thị tất cả member: tên, host, role, state, replication lag
+patronictl -c /etc/patroni/patroni.yml list
+```
+
+Kết quả mong đợi:
+```
++ Cluster: postgres-ha (xxxxxxxxxxxxxxxx) +---------+----+-----------+
+| Member | Host            | Role    | State   | TL | Lag in MB |
++--------+-----------------+---------+---------+----+-----------+
+| pg1    | 192.168.56.111  | Leader  | running |  1 |           |
+| pg2    | 192.168.56.112  | Replica | streaming |  1 |         0 |
+| pg3    | 192.168.56.113  | Replica | streaming |  1 |         0 |
++--------+-----------------+---------+---------+----+-----------+
+```
+
+### Xem topology dạng cây
+
+```bash
+patronictl -c /etc/patroni/patroni.yml topology
+```
+
+### Kiểm tra REST API từng node
+
+```bash
+# Node hiện tại có phải primary không? (200 = yes, 503 = no)
+curl -s http://192.168.56.111:8008/primary
+curl -s http://192.168.56.112:8008/primary
+curl -s http://192.168.56.113:8008/primary
+
+# Node hiện tại có phải replica không? (200 = yes, 503 = no)
+curl -s http://192.168.56.111:8008/replica
+curl -s http://192.168.56.112:8008/replica
+curl -s http://192.168.56.113:8008/replica
+
+# Thông tin sức khoẻ tổng hợp của một node
+curl -s http://192.168.56.111:8008/health | python3 -m json.tool
+
+# Topology toàn cluster qua một node bất kỳ
+curl -s http://192.168.56.111:8008/cluster | python3 -m json.tool
+```
+
+### Kiểm tra systemd service
+
+```bash
+# Trạng thái service (chạy trực tiếp trên từng host)
+systemctl status patroni
+
+# Xem log Patroni (leader election, failover, config reload)
+journalctl -u patroni -n 100 --no-pager
+
+# Theo dõi log real-time
+journalctl -u patroni -f
+```
+
+### Kiểm tra nhanh qua Ansible
+
+```bash
+# Chạy lại bước verify mà không deploy lại
+ansible-playbook playbooks/patroni.yml --tags patroni-verify
+```
+
+### Thao tác quản trị thường dùng (patronictl)
+
+```bash
+# Xem cấu hình cluster hiện tại (TTL, loop_wait, ...)
+patronictl -c /etc/patroni/patroni.yml show-config
+
+# Xem lịch sử failover / switchover
+patronictl -c /etc/patroni/patroni.yml history
+
+# Thực hiện planned switchover (chuyển primary sang node khác)
+patronictl -c /etc/patroni/patroni.yml switchover --master pg1 --candidate pg2
+
+# Restart Patroni trên một node (an toàn hơn systemctl restart)
+patronictl -c /etc/patroni/patroni.yml restart postgres-ha pg1
+```
+
 ## Variables
 
 ### Role defaults (`defaults/main.yml`)

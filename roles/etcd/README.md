@@ -2,6 +2,98 @@
 
 Deploys a 3-node etcd cluster as the DCS (Distributed Configuration Store) for Patroni.
 
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                    etcd Cluster (3 nodes)                    │
+│                                                              │
+│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐        │
+│  │    etcd1    │   │    etcd2    │   │    etcd3    │        │
+│  │ pg1         │◄─►│ pg2         │◄─►│ pg3         │        │
+│  │192.168.56.111│   │192.168.56.112│   │192.168.56.113│       │
+│  │             │   │             │   │             │        │
+│  │ client:2379 │   │ client:2379 │   │ client:2379 │        │
+│  │ peer:  2380 │   │ peer:  2380 │   │ peer:  2380 │        │
+│  └─────────────┘   └─────────────┘   └─────────────┘        │
+│         ▲                  ▲                 ▲               │
+│         └──────────────────┴─────────────────┘               │
+│                    Raft consensus                             │
+└──────────────────────────────────────────────────────────────┘
+                             │
+                      DCS lock / config
+                             │
+                    Patroni (all 3 nodes)
+```
+
+**Quorum:** requires 2/3 nodes healthy. Losing 2 nodes halts all writes.
+
+## Kiểm tra trạng thái (Status Commands)
+
+Tất cả lệnh `etcdctl` cần biến môi trường `ETCDCTL_API=3`. Đặt endpoints đầy đủ để
+kiểm tra toàn cluster thay vì chỉ một node.
+
+```bash
+export ETCDCTL_API=3
+export ENDPOINTS=http://192.168.56.111:2379,http://192.168.56.112:2379,http://192.168.56.113:2379
+```
+
+### Kiểm tra sức khoẻ cluster
+
+```bash
+# Kiểm tra từng node có healthy và cùng chung một cluster không
+etcdctl --endpoints=$ENDPOINTS endpoint health --cluster
+```
+
+Kết quả mong đợi:
+```
+http://192.168.56.111:2379 is healthy: successfully committed proposal: took = ...
+http://192.168.56.112:2379 is healthy: successfully committed proposal: took = ...
+http://192.168.56.113:2379 is healthy: successfully committed proposal: took = ...
+```
+
+### Xem trạng thái chi tiết từng node
+
+```bash
+# Hiển thị leader, raft term, raft index, DB size dưới dạng bảng
+etcdctl --endpoints=$ENDPOINTS endpoint status --write-out=table
+```
+
+Kết quả mong đợi (cột `IS LEADER` = true chỉ đúng với 1 node):
+```
++---------------------------+------------------+---------+---------+-----------+------------+-----------+
+|         ENDPOINT          |        ID        | VERSION | DB SIZE | IS LEADER | IS LEARNER | RAFT TERM |
++---------------------------+------------------+---------+---------+-----------+------------+-----------+
+| http://192.168.56.111:2379 | xxxxxxxxxxxxxxxx |  3.5.30 |   20 kB |     false |      false |         5 |
+| http://192.168.56.112:2379 | xxxxxxxxxxxxxxxx |  3.5.30 |   20 kB |      true |      false |         5 |
+| http://192.168.56.113:2379 | xxxxxxxxxxxxxxxx |  3.5.30 |   20 kB |     false |      false |         5 |
++---------------------------+------------------+---------+---------+-----------+------------+-----------+
+```
+
+### Xem danh sách thành viên
+
+```bash
+# Danh sách tất cả member: ID, tên, peer URL, client URL
+etcdctl --endpoints=$ENDPOINTS member list --write-out=table
+```
+
+### Kiểm tra systemd service
+
+```bash
+# Trạng thái service trên từng node (chạy trực tiếp trên host)
+systemctl status etcd
+
+# Xem log service
+journalctl -u etcd -n 50 --no-pager
+```
+
+### Kiểm tra nhanh qua Ansible
+
+```bash
+# Chạy lại bước verify mà không cần deploy lại
+ansible-playbook playbooks/etcd.yml --tags etcd-verify
+```
+
 ## Variables
 
 ### Required (set in `group_vars/all/main.yml`)
