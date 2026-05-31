@@ -7,3 +7,6 @@
 
 - name: Start etcd service
   ansible.builtin.import_tasks: start.yml
+
+- name: Verify etcd cluster health
+  ansible.builtin.import_tasks: verify.yml

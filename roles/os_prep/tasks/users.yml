@@ -20,6 +20,13 @@
     comment: etcd
   tags: [os_prep, os_prep-config]
 
+- name: Ensure data mount is traversable by all service users
+  ansible.builtin.file:
+    path: "{{ os_prep_data_mount }}"
+    state: directory
+    mode: "0711"
+  tags: [os_prep, os_prep-config]
+
 - name: Create PostgreSQL data directory
   ansible.builtin.file:
     path: "{{ postgresql_data_dir }}"
