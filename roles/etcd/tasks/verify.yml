@@ -102,7 +102,9 @@
   tags: [etcd, etcd-verify]
 
 # etcdctl endpoint status --write-out=table
-# Human-readable table for manual inspection runs.
+# Human-readable table for manual inspection runs. Passing all 3 endpoints
+# prints one row per node, e.g.:
+#   etcdctl --endpoints=http://192.168.56.111:2379,http://192.168.56.112:2379,http://192.168.56.113:2379 endpoint status --write-out=table
 # Not used for assertions — table format is not Jinja2-parseable.
 - name: Show etcd cluster status
   ansible.builtin.command:
