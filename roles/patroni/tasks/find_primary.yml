@@ -16,41 +16,84 @@
   delay: 5
   run_once: true
   delegate_to: localhost
+  become: false
   ignore_errors: true
   tags: [patroni, patroni-find-primary]
 
-- name: Set patroni_primary_host fact from cluster response
+- name: Assert at least one Patroni node responded
+  ansible.builtin.assert:
+    that:
+      - _patroni_cluster_resp.results
+        | rejectattr('failed', 'equalto', true)
+        | selectattr('status', 'equalto', 200)
+        | list | length > 0
+    fail_msg: >-
+      No Patroni REST API responded with HTTP 200.
+      Checked: {{ groups['db_nodes'] | join(', ') }}.
+      Verify Patroni is running: systemctl status patroni
+  run_once: true
+  delegate_to: localhost
+  become: false
+  tags: [patroni, patroni-find-primary]
+
+- name: Assert cluster has an elected Leader
+  vars:
+    _ok_results: >-
+      {{
+        _patroni_cluster_resp.results
+        | rejectattr('failed', 'equalto', true)
+        | selectattr('status', 'equalto', 200)
+        | map(attribute='json')
+        | map(attribute='members')
+        | first
+      }}
+  ansible.builtin.assert:
+    that:
+      - _ok_results | selectattr('role', 'equalto', 'leader') | list | length > 0
+    fail_msg: >-
+      Patroni cluster is reachable but has no Leader yet.
+      Members: {{ _ok_results | map(attribute='name') | zip(_ok_results | map(attribute='role')) | list }}
+  run_once: true
+  delegate_to: localhost
+  become: false
+  tags: [patroni, patroni-find-primary]
+
+- name: Set patroni_primary_host and patroni_primary_inventory_host facts
   ansible.builtin.set_fact:
     patroni_primary_host: >-
       {{
         (
           _patroni_cluster_resp.results
+          | rejectattr('failed', 'equalto', true)
           | selectattr('status', 'equalto', 200)
           | map(attribute='json')
           | map(attribute='members')
           | first
-          | selectattr('role', 'equalto', 'Leader')
+          | selectattr('role', 'equalto', 'leader')
           | map(attribute='host')
           | first
         ).split(':')[0]
       }}
-  run_once: true
-  delegate_to: localhost
-  delegate_facts: true
-  tags: [patroni, patroni-find-primary]
-
-- name: Resolve patroni_primary_host to inventory host
-  ansible.builtin.set_fact:
     patroni_primary_inventory_host: >-
       {{
         groups['db_nodes']
         | map('extract', hostvars, 'ansible_host')
         | zip(groups['db_nodes'])
-        | selectattr(0, 'equalto', patroni_primary_host)
+        | selectattr(0, 'equalto',
+            (
+              _patroni_cluster_resp.results
+              | rejectattr('failed', 'equalto', true)
+              | selectattr('status', 'equalto', 200)
+              | map(attribute='json')
+              | map(attribute='members')
+              | first
+              | selectattr('role', 'equalto', 'leader')
+              | map(attribute='host')
+              | first
+            ).split(':')[0]
+          )
         | map(attribute=1)
         | first
       }}
   run_once: true
-  delegate_to: localhost
-  delegate_facts: true
   tags: [patroni, patroni-find-primary]

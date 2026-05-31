@@ -4,9 +4,12 @@ postgresql_data_dir: /u01/postgresql
 patroni_config_dir: /etc/patroni
 
 # PostgreSQL tuning (Patroni owns postgresql.conf — set via bootstrap.dcs)
+# Tune these values to match the actual hardware (see roles/patroni/defaults/main.yml for guidance)
 pg_max_connections: 200
-pg_work_mem: "32MB"
 pg_shared_buffers: "256MB"
+pg_effective_cache_size: "768MB"
+pg_work_mem: "32MB"
+pg_maintenance_work_mem: "256MB"
 
 # Huge pages: number of 2MB pages to reserve for PostgreSQL shared_buffers
 # Formula: ceil(shared_buffers_MB / 2) + overhead

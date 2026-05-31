@@ -9,6 +9,4 @@ galaxy_info:
     - name: Ubuntu
       versions:
         - jammy
-dependencies:
-  - role: postgresql
-  - role: etcd
+dependencies: []

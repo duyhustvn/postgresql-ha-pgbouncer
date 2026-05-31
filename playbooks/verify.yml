@@ -15,9 +15,10 @@
   gather_facts: false
   tags: [verify, verify-patroni]
   tasks:
-    - name: TODO - verify patronictl list
-      ansible.builtin.debug:
-        msg: "TODO: patronictl list check"
+    - name: Verify Patroni service and cluster state
+      ansible.builtin.import_role:
+        name: patroni
+        tasks_from: verify
 
 - name: Verify PgBouncer connectivity
   hosts: k8s_admin

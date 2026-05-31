@@ -24,11 +24,11 @@ bootstrap:
       use_pg_rewind: true
       use_slots: true
       parameters:
-        max_connections: 200
-        shared_buffers: 16GB
-        effective_cache_size: 48GB
-        work_mem: 32MB
-        maintenance_work_mem: 2GB
+        max_connections: {{ pg_max_connections }}
+        shared_buffers: {{ pg_shared_buffers }}
+        effective_cache_size: {{ pg_effective_cache_size }}
+        work_mem: {{ pg_work_mem }}
+        maintenance_work_mem: {{ pg_maintenance_work_mem }}
         wal_level: replica
         max_wal_size: 8GB
         min_wal_size: 2GB

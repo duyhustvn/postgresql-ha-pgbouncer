@@ -42,7 +42,7 @@
         tasks_from: bootstrap_leader
       tags: [patroni]
 
-# ── Stage 3: replica join (one at a time) ─────────────────────────────────
+#etcdctl --endpoints=http://192.168.56.111:2379,http://192.168.56.112:2379,http://192.168.56.113:2379 endpoint status --write-out=table ── Stage 3: replica join (one at a time) ─────────────────────────────────
 - name: Join Patroni replicas
   hosts: "{{ groups['db_nodes'][1:] | join(',') }}"
   become: true
@@ -67,32 +67,32 @@
         tasks_from: find_primary
       tags: [patroni, db-provision]
 
-    - name: Create dify role
-      community.postgresql.postgresql_user:
-        name: dify
-        password: "{{ dify_db_password }}"
-        role_attr_flags: LOGIN
-        login_user: postgres
-        login_unix_socket: /var/run/postgresql
-        state: present
-      become_user: postgres
-      delegate_to: "{{ patroni_primary_inventory_host }}"
-      run_once: true
-      no_log: true
-      tags: [patroni, db-provision]
+    # - name: Create dify role
+    #   community.postgresql.postgresql_user:
+    #     name: dify
+    #     password: "{{ dify_db_password }}"
+    #     role_attr_flags: LOGIN
+    #     login_user: postgres
+    #     login_unix_socket: /var/run/postgresql
+    #     state: present
+    #   become_user: postgres
+    #   delegate_to: "{{ patroni_primary_inventory_host }}"
+    #   run_once: true
+    #   no_log: true
+    #   tags: [patroni, db-provision]
 
-    - name: Create dify database
-      community.postgresql.postgresql_db:
-        name: dify
-        owner: dify
-        encoding: UTF8
-        lc_collate: "en_US.UTF-8"
-        lc_ctype: "en_US.UTF-8"
-        template: template0
-        login_user: postgres
-        login_unix_socket: /var/run/postgresql
-        state: present
-      become_user: postgres
-      delegate_to: "{{ patroni_primary_inventory_host }}"
-      run_once: true
-      tags: [patroni, db-provision]
+    # - name: Create dify database
+    #   community.postgresql.postgresql_db:
+    #     name: dify
+    #     owner: dify
+    #     encoding: UTF8
+    #     lc_collate: "en_US.UTF-8"
+    #     lc_ctype: "en_US.UTF-8"
+    #     template: template0
+    #     login_user: postgres
+    #     login_unix_socket: /var/run/postgresql
+    #     state: present
+    #   become_user: postgres
+    #   delegate_to: "{{ patroni_primary_inventory_host }}"
+    #   run_once: true
+    #   tags: [patroni, db-provision]

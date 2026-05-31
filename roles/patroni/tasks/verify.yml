@@ -1,0 +1,102 @@
+---
+# systemctl is-active patroni
+# Checks the Patroni daemon is managed and running via systemd.
+# Uses the systemd module (no shell) so we get structured status fields back,
+# allowing an assert on ActiveState rather than parsing text output.
+- name: Assert Patroni systemd service is active on all nodes
+  ansible.builtin.systemd:
+    name: patroni
+  register: _patroni_svc
+  changed_when: false
+  tags: [patroni, patroni-verify]
+
+- name: Fail if Patroni service is not running
+  ansible.builtin.assert:
+    that: _patroni_svc.status.ActiveState == 'active'
+    fail_msg: "Patroni is {{ _patroni_svc.status.ActiveState }} on {{ inventory_hostname }}"
+    success_msg: "Patroni is active on {{ inventory_hostname }}"
+  tags: [patroni, patroni-verify]
+
+# GET http://<node>:8008/cluster
+# Returns the full cluster topology as seen by one node: all members with their
+# name, role (leader/replica/standby_leader), state, and replication lag.
+# We query a single node (run_once) from the controller (delegate_to: localhost)
+# to avoid needing SSH — the REST API is always unauthenticated on the LAN port.
+- name: Query Patroni /cluster endpoint
+  ansible.builtin.uri:
+    url: "http://{{ ansible_host }}:{{ patroni_rest_port }}/cluster"
+    method: GET
+    return_content: true
+    status_code: 200
+  register: _patroni_cluster
+  changed_when: false
+  run_once: true
+  delegate_to: localhost
+  become: false
+  tags: [patroni, patroni-verify]
+
+# Asserts the cluster knows about every host in the [db_nodes] group.
+# A missing member means a node failed to join or was expelled from the DCS.
+- name: Assert expected number of members in cluster
+  ansible.builtin.assert:
+    that:
+      - _patroni_cluster.json.members | length == groups['db_nodes'] | length
+    fail_msg: >-
+      Expected {{ groups['db_nodes'] | length }} members,
+      found {{ _patroni_cluster.json.members | length }}.
+      Members reported: {{ _patroni_cluster.json.members | map(attribute='name') | list }}
+    success_msg: "All {{ groups['db_nodes'] | length }} members present."
+  run_once: true
+  tags: [patroni, patroni-verify]
+
+# Patroni guarantees at most one leader at a time via the DCS lock.
+# Zero leaders means no primary is elected (cluster is read-only / bootstrapping).
+# Two or more leaders would indicate a DCS split-brain — should never happen.
+- name: Assert exactly one leader in cluster
+  ansible.builtin.assert:
+    that:
+      - _patroni_cluster.json.members | selectattr('role', 'equalto', 'leader') | list | length == 1
+    fail_msg: >-
+      Expected exactly 1 leader, found
+      {{ _patroni_cluster.json.members | selectattr('role', 'equalto', 'leader') | list | length }}.
+      Members: {{ _patroni_cluster.json.members | map(attribute='name') | zip(_patroni_cluster.json.members | map(attribute='role')) | list }}
+    success_msg: >-
+      Leader is {{ _patroni_cluster.json.members | selectattr('role', 'equalto', 'leader') | map(attribute='name') | first }}.
+  run_once: true
+  tags: [patroni, patroni-verify]
+
+# member.state reflects what PostgreSQL is actually doing: 'running', 'streaming',
+# 'stopped', 'start failed', 'crashed', etc.
+# A member can be registered in DCS (present in /cluster) but still unhealthy
+# if its local PostgreSQL process failed to start.
+- name: Assert no members are in an unhealthy state
+  ansible.builtin.assert:
+    that:
+      - _patroni_cluster.json.members
+        | rejectattr('state', 'in', ['stopped', 'start failed', 'crashed'])
+        | list | length == _patroni_cluster.json.members | length
+    fail_msg: >-
+      One or more members are in an unhealthy state:
+      {{ _patroni_cluster.json.members | map(attribute='name') | zip(_patroni_cluster.json.members | map(attribute='state')) | list }}
+    success_msg: "All members are in a healthy state."
+  run_once: true
+  tags: [patroni, patroni-verify]
+
+# Human-readable summary: name / role / state / lag_in_mb per member.
+# lag_in_mb is the replication lag reported by Patroni; 0 on the leader.
+# Equivalent to: patronictl -c /etc/patroni/patroni.yml list
+- name: Show Patroni cluster status
+  ansible.builtin.debug:
+    msg: >-
+      {{
+        _patroni_cluster.json.members
+        | map(attribute='name')
+        | zip(
+            _patroni_cluster.json.members | map(attribute='role'),
+            _patroni_cluster.json.members | map(attribute='state'),
+            _patroni_cluster.json.members | map(attribute='lag_in_mb', default=0)
+          )
+        | list
+      }}
+  run_once: true
+  tags: [patroni, patroni-verify]

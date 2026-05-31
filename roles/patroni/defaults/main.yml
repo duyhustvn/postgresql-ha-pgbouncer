@@ -5,3 +5,12 @@ patroni_log_dir: /var/log/patroni
 # Set to 'off' in test environments without a softdog/hardware watchdog device.
 # group_vars/db_nodes/main.yml overrides this for the target environment.
 patroni_watchdog_mode: required
+
+# PostgreSQL tuning defaults — safe for a 4 GB dev VM.
+# Override in your inventory's group_vars for the actual hardware.
+# Rule of thumb: shared_buffers = 25% RAM, effective_cache_size = 75% RAM
+pg_max_connections: 100
+pg_shared_buffers: "256MB"
+pg_effective_cache_size: "768MB"
+pg_work_mem: "4MB"
+pg_maintenance_work_mem: "64MB"
