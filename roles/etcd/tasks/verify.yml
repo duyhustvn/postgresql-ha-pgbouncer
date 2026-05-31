@@ -1,4 +1,8 @@
 ---
+# etcdctl endpoint health --cluster
+# Checks each endpoint is reachable and part of the same cluster.
+# --cluster differs from plain "endpoint health" which pings nodes in isolation;
+# this flag verifies all nodes participate in a single healthy cluster.
 - name: Wait for etcd cluster to become healthy
   ansible.builtin.command:
     cmd: >-
@@ -20,6 +24,86 @@
   delegate_to: "{{ groups['etcd'] | first }}"
   tags: [etcd, etcd-verify]
 
+# etcdctl member list --write-out=json
+# Returns all members the cluster knows about: ID, name, peer URL, client URL,
+# and isLearner flag. JSON output is used so Jinja2 filters can assert on it.
+- name: Collect etcd member list (JSON)
+  ansible.builtin.command:
+    cmd: >-
+      etcdctl
+      --endpoints={{ groups['etcd']
+        | map('extract', hostvars, 'ansible_host')
+        | map('regex_replace', '^', 'http://')
+        | map('regex_replace', '$', ':2379')
+        | join(',') }}
+      member list --write-out=json
+  environment:
+    ETCDCTL_API: "3"
+  register: etcd_members_raw
+  changed_when: false
+  run_once: true
+  delegate_to: "{{ groups['etcd'] | first }}"
+  tags: [etcd, etcd-verify]
+
+- name: Assert all expected members are present
+  ansible.builtin.assert:
+    that: (etcd_members_raw.stdout | from_json).members | length == groups['etcd'] | length
+    fail_msg: >-
+      Expected {{ groups['etcd'] | length }} members,
+      found {{ (etcd_members_raw.stdout | from_json).members | length }}.
+    success_msg: "All {{ groups['etcd'] | length }} members present."
+  run_once: true
+  tags: [etcd, etcd-verify]
+
+# etcdctl endpoint status --write-out=json
+# Returns per-endpoint state: member ID, leader ID, raft term, raft index,
+# db size, etc. Note: Status.leader is an integer member ID, not a boolean.
+# JSON output is required here; table format cannot be parsed by Jinja2.
+- name: Collect etcd endpoint status (JSON)
+  ansible.builtin.command:
+    cmd: >-
+      etcdctl
+      --endpoints={{ groups['etcd']
+        | map('extract', hostvars, 'ansible_host')
+        | map('regex_replace', '^', 'http://')
+        | map('regex_replace', '$', ':2379')
+        | join(',') }}
+      endpoint status --write-out=json
+  environment:
+    ETCDCTL_API: "3"
+  register: etcd_status_raw
+  changed_when: false
+  run_once: true
+  delegate_to: "{{ groups['etcd'] | first }}"
+  tags: [etcd, etcd-verify]
+
+- name: Assert exactly one leader exists
+  ansible.builtin.assert:
+    that: >-
+      (etcd_status_raw.stdout | from_json)
+      | map(attribute='Status')
+      | map(attribute='leader')
+      | unique | list | length == 1
+    fail_msg: "Nodes disagree on leader — possible split-brain or no election yet."
+    success_msg: "All nodes agree on exactly 1 leader."
+  run_once: true
+  tags: [etcd, etcd-verify]
+
+- name: Assert no members are learners (unvoted)
+  ansible.builtin.assert:
+    that: >-
+      (etcd_members_raw.stdout | from_json).members
+      | selectattr('isLearner', 'defined')
+      | selectattr('isLearner', 'equalto', true)
+      | list | length == 0
+    fail_msg: "One or more etcd members are still in learner (non-voting) state."
+    success_msg: "No learner members — all nodes are full voting members."
+  run_once: true
+  tags: [etcd, etcd-verify]
+
+# etcdctl endpoint status --write-out=table
+# Human-readable table for manual inspection runs.
+# Not used for assertions — table format is not Jinja2-parseable.
 - name: Show etcd cluster status
   ansible.builtin.command:
     cmd: >-
