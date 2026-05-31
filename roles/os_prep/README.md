@@ -45,6 +45,35 @@ kernel_shmmax: 17179869184
 kernel_shmall: 4194304
 ```
 
+## Watchdog
+
+Patroni uses the kernel watchdog device (`/dev/watchdog`) as a fencing mechanism to prevent split-brain.
+
+**How it works:**
+
+1. Patroni continuously writes to `/dev/watchdog` while it is healthy.
+2. If Patroni hangs or crashes and stops writing, the kernel watchdog timer expires and **forces an immediate reboot** of the node — no human intervention required.
+3. After reboot, the node rejoins the cluster as a replica, leaving only one primary.
+
+**Why this matters:**
+
+Without a watchdog, a network partition could leave a former primary running in isolation, still accepting writes, while a new primary is elected on the other side. Both nodes would write simultaneously, corrupting replication (split-brain). The watchdog ensures the isolated primary self-destructs before that can happen.
+
+**What this role configures:**
+
+- Loads the `softdog` kernel module (software watchdog emulation, no extra hardware needed).
+- Persists `softdog` in `/etc/modules-load.d/` so it survives reboots.
+- Creates a udev rule granting the `postgres` user ownership of `/dev/watchdog`, allowing Patroni (which runs as `postgres`) to open the device.
+
+**Patroni side** (configured in the `patroni` role):
+
+```yaml
+watchdog:
+  mode: required   # Patroni refuses to start if /dev/watchdog is unavailable
+  device: /dev/watchdog
+  safety_margin: 5
+```
+
 ## Dependencies
 
 None.
