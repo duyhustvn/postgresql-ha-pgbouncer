@@ -1,7 +1,7 @@
 ---
 galaxy_info:
   role_name: pgbouncer
-  author: dify-pg-ha
+  author: postgres-ha
   description: Deploy PgBouncer to Kubernetes in transaction-mode connection pooling
   license: MIT
   min_ansible_version: "2.16"

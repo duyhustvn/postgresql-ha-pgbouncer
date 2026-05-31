@@ -1,7 +1,7 @@
 ---
 galaxy_info:
   role_name: postgresql
-  author: dify-pg-ha
+  author: postgres-ha
   description: Install PostgreSQL 16 on HA nodes (Patroni manages config)
   license: MIT
   min_ansible_version: "2.16"

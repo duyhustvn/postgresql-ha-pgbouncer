@@ -1,7 +1,7 @@
 ---
 galaxy_info:
   role_name: etcd
-  author: dify-pg-ha
+  author: postgres-ha
   description: Deploy etcd cluster as DCS for Patroni
   license: MIT
   min_ansible_version: "2.16"

@@ -55,7 +55,7 @@ all:
 ### group_vars/all/main.yml chứa (không exhaustive):
 
 ```yaml
-cluster_name: dify-pg
+cluster_name: postgres-ha
 postgresql_version: "16"
 patroni_version: "4.1.3"
 etcd_version: "v3.5.30"

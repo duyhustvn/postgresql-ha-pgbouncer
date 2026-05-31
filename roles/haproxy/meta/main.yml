@@ -1,7 +1,7 @@
 ---
 galaxy_info:
   role_name: haproxy
-  author: dify-pg-ha
+  author: postgres-ha
   description: Deploy HAProxy to Kubernetes as routing layer to PostgreSQL primary
   license: MIT
   min_ansible_version: "2.16"

@@ -1,7 +1,7 @@
 ---
 galaxy_info:
   role_name: patroni
-  author: dify-pg-ha
+  author: postgres-ha
   description: Deploy Patroni for PostgreSQL HA with etcd DCS
   license: MIT
   min_ansible_version: "2.16"

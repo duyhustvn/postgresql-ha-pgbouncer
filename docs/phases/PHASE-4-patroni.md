@@ -146,7 +146,7 @@ roles/patroni/
 1. `ansible-playbook playbooks/database.yml` lần đầu thành công.
 2. SSH vào pg1: `/opt/patroni/venv/bin/patronictl -c /etc/patroni/patroni.yml list` cho:
    ```
-   + Cluster: dify-pg -+--------+---------+----+-----------+
+   + Cluster: postgres-ha -+--------+---------+----+-----------+
    | Member | Host     | Role   | State   | TL | Lag in MB |
    +--------+----------+--------+---------+----+-----------+
    | pg1    | 192.168.56.111 | Leader | running |  1 |           |

@@ -6,7 +6,7 @@ Bộ tài liệu để Claude Code sinh ra một dự án Ansible triển khai c
 
 1. **Khởi tạo repo Ansible trống** (Claude Code sẽ scaffold ở Phase 1):
    ```
-   mkdir dify-pg-ha-ansible && cd dify-pg-ha-ansible
+   mkdir postgres-ha-ansible && cd postgres-ha-ansible
    git init
    ```
 2. **Copy nguyên thư mục này** vào `docs/` của repo:

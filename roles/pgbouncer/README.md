@@ -70,7 +70,7 @@ permission can decode them. For production, consider SealedSecrets or Vault.
 |---|---|
 | `postgres_superuser_password` | Used to query SCRAM verifiers from `pg_authid` |
 | `k8s_namespace` | Kubernetes namespace (`db`) |
-| `cluster_name` | Cluster label (`dify-pg`) |
+| `cluster_name` | Cluster label (`postgres-ha`) |
 | `haproxy_frontend_port` | HAProxy service port for the `[databases]` section |
 
 ## Dependencies

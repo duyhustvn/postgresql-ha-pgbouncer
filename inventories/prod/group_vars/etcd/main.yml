@@ -1,4 +1,4 @@
 ---
 etcd_data_dir: /u01/etcd
-etcd_cluster_token: "dify-pg-etcd"
+etcd_cluster_token: "postgres-ha-etcd"
 etcd_initial_cluster_state: "new"

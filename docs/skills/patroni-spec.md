@@ -18,7 +18,7 @@ Spec cho roles `postgresql` + `patroni`. Phase liên quan: 4, 6.
 Template `templates/patroni.yml.j2`. Tham số sống động lấy từ inventory:
 
 ```yaml
-scope: {{ cluster_name }}                    # ví dụ 'dify-pg'
+scope: {{ cluster_name }}                    # ví dụ 'postgres-ha'
 namespace: /service/
 name: {{ patroni_name }}                     # pg1/pg2/pg3 từ hostvars
 

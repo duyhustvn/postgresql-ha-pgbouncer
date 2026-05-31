@@ -38,7 +38,7 @@ restart whenever `haproxy.cfg` changes.
 | Variable | Description |
 |---|---|
 | `k8s_namespace` | Kubernetes namespace (`db`) |
-| `cluster_name` | Cluster label (`dify-pg`) |
+| `cluster_name` | Cluster label (`postgres-ha`) |
 | `patroni_rest_port` | Patroni health-check port (`8008`) |
 | `postgresql_port` | PostgreSQL backend port (`5432`) |
 

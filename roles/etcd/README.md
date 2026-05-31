@@ -9,7 +9,7 @@ Deploys a 3-node etcd cluster as the DCS (Distributed Configuration Store) for P
 | Variable | Example | Description |
 |---|---|---|
 | `etcd_version` | `v3.5.30` | etcd release tag to download from GitHub |
-| `cluster_name` | `dify-pg` | Used as `initial-cluster-token` prefix |
+| `cluster_name` | `postgres-ha` | Used as `initial-cluster-token` prefix |
 | `etcd_client_port` | `2379` | Client listen port |
 | `etcd_peer_port` | `2380` | Peer communication port |
 | `proxy_env` | `{http_proxy: ""}` | Proxy dict for internet-facing tasks |
