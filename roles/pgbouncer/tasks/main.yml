@@ -1,5 +1,19 @@
 ---
-- name: TODO - PgBouncer tasks
-  ansible.builtin.debug:
-    msg: "TODO: implement pgbouncer tasks (K8s Deployment + Service + Secret)"
+- name: Discover current Patroni primary
+  ansible.builtin.include_tasks:
+    file: "{{ role_path | dirname }}/patroni/tasks/find_primary.yml"
+    apply:
+      tags: [pgbouncer, pgbouncer-config]
+  tags: [pgbouncer, pgbouncer-config]
+
+- name: Fetch SCRAM verifiers from PostgreSQL primary
+  ansible.builtin.include_tasks: fetch_verifiers.yml
+  tags: [pgbouncer, pgbouncer-config]
+
+- name: Render pgbouncer configuration
+  ansible.builtin.include_tasks: render.yml
+  tags: [pgbouncer, pgbouncer-config]
+
+- name: Apply PgBouncer K8s resources
+  ansible.builtin.include_tasks: apply.yml
   tags: [pgbouncer, pgbouncer-install, pgbouncer-config]

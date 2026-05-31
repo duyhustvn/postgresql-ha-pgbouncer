@@ -1,0 +1,68 @@
+# {{ ansible_managed }}
+# Generated for cluster {{ cluster_name }} - DO NOT EDIT MANUALLY
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pg-haproxy
+  namespace: {{ k8s_namespace }}
+  labels:
+    app: pg-haproxy
+    cluster: {{ cluster_name }}
+    managed-by: ansible
+spec:
+  replicas: {{ haproxy_replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: pg-haproxy
+  template:
+    metadata:
+      labels:
+        app: pg-haproxy
+        cluster: {{ cluster_name }}
+      annotations:
+        checksum/config: "{{ haproxy_cfg_checksum }}"
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: pg-haproxy
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: haproxy
+          image: "{{ haproxy_image }}"
+          ports:
+            - containerPort: {{ haproxy_frontend_port }}
+              name: postgres
+            - containerPort: {{ haproxy_stats_port }}
+              name: stats
+          volumeMounts:
+            - name: config
+              mountPath: /usr/local/etc/haproxy
+          livenessProbe:
+            tcpSocket:
+              port: {{ haproxy_frontend_port }}
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: {{ haproxy_frontend_port }}
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+      volumes:
+        - name: config
+          configMap:
+            name: pg-haproxy-config

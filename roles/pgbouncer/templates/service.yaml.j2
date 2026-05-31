@@ -1,0 +1,18 @@
+# {{ ansible_managed }}
+# Generated for cluster {{ cluster_name }} - DO NOT EDIT MANUALLY
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgbouncer
+  namespace: {{ k8s_namespace }}
+  labels:
+    app: pgbouncer
+    cluster: {{ cluster_name }}
+    managed-by: ansible
+spec:
+  type: ClusterIP
+  selector:
+    app: pgbouncer
+  ports:
+    - port: {{ pgbouncer_port }}
+      targetPort: {{ pgbouncer_port }}

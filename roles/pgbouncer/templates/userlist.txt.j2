@@ -1,0 +1,3 @@
+{% for row in pgbouncer_scram_verifiers %}
+"{{ row.rolname }}" "{{ row.rolpassword }}"
+{% endfor %}

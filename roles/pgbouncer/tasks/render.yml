@@ -1,0 +1,12 @@
+---
+- name: Render pgbouncer.ini and compute checksum
+  ansible.builtin.set_fact:
+    pgbouncer_ini_rendered: "{{ lookup('template', 'pgbouncer.ini.j2') }}"
+    pgbouncer_ini_checksum: "{{ lookup('template', 'pgbouncer.ini.j2') | hash('sha256') }}"
+  tags: [pgbouncer, pgbouncer-config]
+
+- name: Render userlist.txt content
+  ansible.builtin.set_fact:
+    pgbouncer_userlist_rendered: "{{ lookup('template', 'userlist.txt.j2') }}"
+  no_log: true
+  tags: [pgbouncer, pgbouncer-config]

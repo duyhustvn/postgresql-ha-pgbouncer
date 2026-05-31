@@ -1,0 +1,100 @@
+---
+- name: Ensure Kubernetes namespace exists
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ k8s_namespace }}"
+        labels:
+          name: "{{ k8s_namespace }}"
+  tags: [pgbouncer, pgbouncer-install]
+
+- name: Apply PgBouncer ConfigMap
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ k8s_namespace }}"
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: pgbouncer-config
+        namespace: "{{ k8s_namespace }}"
+        labels:
+          app: pgbouncer
+          cluster: "{{ cluster_name }}"
+          managed-by: ansible
+      data:
+        pgbouncer.ini: "{{ pgbouncer_ini_rendered }}"
+  tags: [pgbouncer, pgbouncer-config]
+
+- name: Apply PgBouncer userlist Secret
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ k8s_namespace }}"
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: pgbouncer-userlist
+        namespace: "{{ k8s_namespace }}"
+        labels:
+          app: pgbouncer
+          cluster: "{{ cluster_name }}"
+          managed-by: ansible
+      type: Opaque
+      stringData:
+        userlist.txt: "{{ pgbouncer_userlist_rendered }}"
+  no_log: true
+  tags: [pgbouncer, pgbouncer-config]
+
+- name: Apply PgBouncer Deployment
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ k8s_namespace }}"
+    definition: "{{ lookup('template', 'deployment.yaml.j2') | from_yaml }}"
+  tags: [pgbouncer, pgbouncer-install]
+
+- name: Apply PgBouncer Service
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ k8s_namespace }}"
+    definition: "{{ lookup('template', 'service.yaml.j2') | from_yaml }}"
+  tags: [pgbouncer, pgbouncer-install]
+
+- name: Apply PgBouncer PodDisruptionBudget
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ k8s_namespace }}"
+    definition:
+      apiVersion: policy/v1
+      kind: PodDisruptionBudget
+      metadata:
+        name: pgbouncer
+        namespace: "{{ k8s_namespace }}"
+        labels:
+          app: pgbouncer
+          cluster: "{{ cluster_name }}"
+          managed-by: ansible
+      spec:
+        minAvailable: 2
+        selector:
+          matchLabels:
+            app: pgbouncer
+  tags: [pgbouncer, pgbouncer-install]
+
+- name: Wait for PgBouncer rollout to complete
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: pgbouncer
+    namespace: "{{ k8s_namespace }}"
+  register: _pgbouncer_dep
+  until: >
+    _pgbouncer_dep.resources | length > 0 and
+    _pgbouncer_dep.resources[0].status.readyReplicas | default(0) ==
+    _pgbouncer_dep.resources[0].spec.replicas
+  retries: 30
+  delay: 5
+  tags: [pgbouncer, pgbouncer-install]

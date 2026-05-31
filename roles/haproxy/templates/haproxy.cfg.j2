@@ -1,0 +1,30 @@
+# {{ ansible_managed }}
+# Generated for cluster {{ cluster_name }} - DO NOT EDIT MANUALLY
+global
+    maxconn 5000
+    log stdout format raw local0
+
+defaults
+    mode tcp
+    log global
+    retries 2
+    timeout connect 5s
+    timeout client  60m
+    timeout server  60m
+    timeout check   5s
+
+listen stats
+    bind *:{{ haproxy_stats_port }}
+    mode http
+    stats enable
+    stats uri /
+    stats refresh 5s
+
+listen postgres-primary
+    bind *:{{ haproxy_frontend_port }}
+    option httpchk GET /primary
+    http-check expect status 200
+    default-server inter 3s fall 2 rise 2 on-marked-down shutdown-sessions
+{% for h in groups['db_nodes'] %}
+    server {{ hostvars[h].patroni_name }} {{ hostvars[h].ansible_host }}:{{ postgresql_port }} maxconn {{ haproxy_backend_maxconn }} check port {{ patroni_rest_port }}
+{% endfor %}

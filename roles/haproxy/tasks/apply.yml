@@ -1,0 +1,87 @@
+---
+- name: Ensure Kubernetes namespace exists
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ k8s_namespace }}"
+        labels:
+          name: "{{ k8s_namespace }}"
+  tags: [haproxy, haproxy-install]
+
+- name: Apply HAProxy ConfigMap
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ k8s_namespace }}"
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: pg-haproxy-config
+        namespace: "{{ k8s_namespace }}"
+        labels:
+          app: pg-haproxy
+          cluster: "{{ cluster_name }}"
+          managed-by: ansible
+      data:
+        haproxy.cfg: "{{ haproxy_cfg_rendered }}"
+  tags: [haproxy, haproxy-config]
+
+- name: Apply HAProxy Deployment
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ k8s_namespace }}"
+    definition: "{{ lookup('template', 'deployment.yaml.j2') | from_yaml }}"
+  tags: [haproxy, haproxy-install]
+
+- name: Apply HAProxy Service
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ k8s_namespace }}"
+    definition: "{{ lookup('template', 'service.yaml.j2') | from_yaml }}"
+  tags: [haproxy, haproxy-install]
+
+- name: Apply HAProxy NetworkPolicy
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ k8s_namespace }}"
+    definition: "{{ lookup('template', 'networkpolicy.yaml.j2') | from_yaml }}"
+  tags: [haproxy, haproxy-config]
+
+- name: Apply HAProxy PodDisruptionBudget
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ k8s_namespace }}"
+    definition:
+      apiVersion: policy/v1
+      kind: PodDisruptionBudget
+      metadata:
+        name: pg-haproxy
+        namespace: "{{ k8s_namespace }}"
+        labels:
+          app: pg-haproxy
+          cluster: "{{ cluster_name }}"
+          managed-by: ansible
+      spec:
+        minAvailable: 1
+        selector:
+          matchLabels:
+            app: pg-haproxy
+  tags: [haproxy, haproxy-install]
+
+- name: Wait for HAProxy rollout to complete
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: pg-haproxy
+    namespace: "{{ k8s_namespace }}"
+  register: _haproxy_dep
+  until: >
+    _haproxy_dep.resources | length > 0 and
+    _haproxy_dep.resources[0].status.readyReplicas | default(0) ==
+    _haproxy_dep.resources[0].spec.replicas
+  retries: 30
+  delay: 5
+  tags: [haproxy, haproxy-install]

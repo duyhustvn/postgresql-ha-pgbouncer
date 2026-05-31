@@ -5,5 +5,11 @@ pgbouncer_image: "edoburu/pgbouncer:1.23"
 pgbouncer_pool_mode: transaction
 pgbouncer_max_client_conn: 2000
 pgbouncer_default_pool_size: 50
+pgbouncer_min_pool_size: 10
 pgbouncer_reserve_pool_size: 10
+pgbouncer_reserve_pool_timeout: 3
+pgbouncer_max_db_connections: 100
 pgbouncer_server_lifetime: 600
+pgbouncer_server_idle_timeout: 120
+pgbouncer_server_connect_timeout: 15
+pgbouncer_query_wait_timeout: 120

@@ -3,3 +3,4 @@ haproxy_replicas: 2
 haproxy_frontend_port: 5000
 haproxy_stats_port: 7000
 haproxy_image: "haproxy:2.9"
+haproxy_backend_maxconn: 200

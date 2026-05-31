@@ -1,0 +1,36 @@
+---
+- name: Fetch SCRAM verifiers from PostgreSQL primary
+  community.postgresql.postgresql_query:
+    db: postgres
+    login_user: postgres
+    login_host: "{{ patroni_primary_host }}"
+    login_port: "{{ postgresql_port }}"
+    login_password: "{{ postgres_superuser_password }}"
+    query: >
+      SELECT rolname, rolpassword
+      FROM pg_authid
+      WHERE rolname = ANY(%s)
+        AND rolpassword IS NOT NULL
+    positional_args:
+      - ['dify', 'pgbouncer_admin']
+  register: pgbouncer_scram_result
+  delegate_to: localhost
+  no_log: true
+  tags: [pgbouncer, pgbouncer-config]
+
+- name: Assert both SCRAM verifiers were returned
+  ansible.builtin.assert:
+    that:
+      - pgbouncer_scram_result.query_result | length == 2
+    fail_msg: >
+      Expected 2 SCRAM verifiers (dify, pgbouncer_admin) but got
+      {{ pgbouncer_scram_result.query_result | length }}.
+      Ensure phase 4 created both users with SCRAM-SHA-256 passwords.
+    quiet: true
+  tags: [pgbouncer, pgbouncer-config]
+
+- name: Store SCRAM verifiers as fact
+  ansible.builtin.set_fact:
+    pgbouncer_scram_verifiers: "{{ pgbouncer_scram_result.query_result }}"
+  no_log: true
+  tags: [pgbouncer, pgbouncer-config]

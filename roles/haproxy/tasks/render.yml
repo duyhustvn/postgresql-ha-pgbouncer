@@ -1,0 +1,6 @@
+---
+- name: Render haproxy config and compute checksum
+  ansible.builtin.set_fact:
+    haproxy_cfg_rendered: "{{ lookup('template', 'haproxy.cfg.j2') }}"
+    haproxy_cfg_checksum: "{{ lookup('template', 'haproxy.cfg.j2') | hash('sha256') }}"
+  tags: [haproxy, haproxy-config]

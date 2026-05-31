@@ -1,0 +1,27 @@
+# {{ ansible_managed }}
+# Generated for cluster {{ cluster_name }} - DO NOT EDIT MANUALLY
+# NOTE: Requires a CNI that enforces NetworkPolicy (Calico, Cilium).
+# With Flannel (default), this manifest is applied but has no effect.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: pg-haproxy-allow-pgbouncer
+  namespace: {{ k8s_namespace }}
+  labels:
+    app: pg-haproxy
+    cluster: {{ cluster_name }}
+    managed-by: ansible
+spec:
+  podSelector:
+    matchLabels:
+      app: pg-haproxy
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: pgbouncer
+      ports:
+        - protocol: TCP
+          port: {{ haproxy_frontend_port }}

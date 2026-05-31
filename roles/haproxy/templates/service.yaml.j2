@@ -1,0 +1,19 @@
+# {{ ansible_managed }}
+# Generated for cluster {{ cluster_name }} - DO NOT EDIT MANUALLY
+apiVersion: v1
+kind: Service
+metadata:
+  name: pg-haproxy
+  namespace: {{ k8s_namespace }}
+  labels:
+    app: pg-haproxy
+    cluster: {{ cluster_name }}
+    managed-by: ansible
+spec:
+  type: ClusterIP
+  selector:
+    app: pg-haproxy
+  ports:
+    - name: postgres
+      port: {{ haproxy_frontend_port }}
+      targetPort: {{ haproxy_frontend_port }}
