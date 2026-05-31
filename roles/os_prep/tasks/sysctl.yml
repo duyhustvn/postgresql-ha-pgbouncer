@@ -43,3 +43,22 @@
     state: present
     reload: true
   tags: [os_prep, os_prep-config, os_prep-sysctl]
+
+- name: Read current sysctl values from remote host
+  ansible.builtin.command:
+    cmd: sysctl -n vm.overcommit_memory vm.swappiness net.ipv4.tcp_keepalive_time kernel.shmmax kernel.shmall
+  register: os_prep_sysctl_check
+  changed_when: false
+  tags: [os_prep, os_prep-config, os_prep-sysctl, os_prep-verify]
+
+- name: Verify sysctl values are applied correctly
+  ansible.builtin.assert:
+    that:
+      - os_prep_sysctl_check.stdout_lines[0] == os_prep_vm_overcommit_memory | string
+      - os_prep_sysctl_check.stdout_lines[1] == os_prep_vm_swappiness | string
+      - os_prep_sysctl_check.stdout_lines[2] == os_prep_net_tcp_keepalive_time | string
+      - os_prep_sysctl_check.stdout_lines[3] == os_prep_kernel_shmmax | string
+      - os_prep_sysctl_check.stdout_lines[4] == os_prep_kernel_shmall | string
+    fail_msg: "One or more sysctl values do not match the requested configuration."
+    success_msg: "All sysctl values verified."
+  tags: [os_prep, os_prep-config, os_prep-sysctl, os_prep-verify]

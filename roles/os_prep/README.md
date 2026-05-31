@@ -92,6 +92,9 @@ ansible-playbook playbooks/os_prep.yml -e os_prep_verify_mount=false
 
 # Dry run
 ansible-playbook playbooks/os_prep.yml --check --diff
+
+# Verify 
+ansible-playbook playbooks/os_prep.yml --tags os_prep-verify
 ```
 
 ## Tags
